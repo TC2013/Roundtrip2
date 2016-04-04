@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Roundtrip2</string>
+    <string name="title_activity_device_scan">DeviceScanActivity</string>
+    <string name="action_settings">Settings</string>
+    <string name="ble_not_supported">Bluetooth LE not supported.</string>
+    <string name="ble_not_available">Bluetooth LE not available.</string>
+    <string name="roundtrip_service_name">Roundtrip Service</string>
+</resources>
