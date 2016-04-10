@@ -16,6 +16,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.PowerManager;
 import android.os.RemoteException;
+import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
@@ -277,7 +278,7 @@ public class RoundtripService extends Service {
         //mPump.pressButton();
 
         // See if the RileyLink is listening
-        mRileyLink.writeToData(new byte[] {RileyLinkPacket.RILEYLINK_CMD_GET_VERSION});
+        mRileyLink.writeToData(new byte[] {RileyLinkPacket.RILEYLINK_CMD_GET_VERSION},500);
         byte[] response = mRileyLink.readFromData(500);
         if (response!=null) {
             Log.d(TAG,"Read from Rileylink: "+ByteUtil.shortHexString(response));
@@ -286,12 +287,47 @@ public class RoundtripService extends Service {
             Log.d(TAG,"No data from Rileylink (timeout)");
         }
 
+        // test differences between xComposeRFStream and encodeData
+        // Note: xComposeRFStream adds an extra null to end of array.
+        // Use encodeData() instead.
+
+        if (false) {
+            byte[] testdata = new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
+            byte[] r1 = RileyLinkUtil.xcomposeRFStream(testdata);
+            byte[] r2 = RileyLinkUtil.encodeData(testdata);
+            Log.d(TAG, "xcompose returned: " + ByteUtil.shortHexString(r1));
+            Log.d(TAG, "encode returned  : " + ByteUtil.shortHexString(r2));
+
+            byte[] d1 = RileyLinkUtil.decodeRF(r1);
+            if (d1 != null) {
+                Log.d(TAG, "decoded xCompose: " + ByteUtil.shortHexString(d1));
+            } else {
+                Log.d(TAG, "decoded xCompose returned null array");
+            }
+
+            byte[] d2 = RileyLinkUtil.decodeRF(r2);
+            if (d2 != null) {
+                Log.d(TAG, "decoded encode  : " + ByteUtil.shortHexString(d2));
+            } else {
+                Log.d(TAG, "decoded encode returned null array");
+            }
+        }
 
 
-        for (byte sendChannel = 0; sendChannel < 5; sendChannel++) {
-            for (byte recvChannel = 0; recvChannel < 5; recvChannel++) {
-                // try simple wakey
-                Log.e(TAG,String.format("TESTING SEND %d RECEIVE %d",sendChannel,recvChannel));
+        if (true) {
+            for (byte sendChannel = 0; sendChannel < 5; sendChannel++) {
+                for (byte recvChannel = 0; recvChannel < 5; recvChannel++) {
+                    // try simple wakey
+                    Log.e(TAG, String.format("TESTING SEND %d RECEIVE %d", sendChannel, recvChannel));
+
+                    MinimedCommandPacket checkForPumpAwake = mPump.powerMessage();
+                    mPump.sendToMinimed(checkForPumpAwake.getBytestream(), sendChannel, 0, 0);
+                    Log.w(TAG, "Listening for 5000 ms");
+                    mPump.orderRileyLinkToListen(recvChannel, 5000);
+                    MinimedPacket responsePacket = mPump.waitForResponse(Minimed.STANDARD_PUMP_RESPONSE_WINDOW);
+
+                /* old simple wakey */
+                /*
                 byte[] cmd = new byte[]{RileyLinkPacket.RILEYLINK_CMD_SEND_AND_LISTEN, sendChannel, 0, 0, recvChannel, 1, 0, 3};
                 byte[] wakey = new byte[]{(byte) 0xA7, (byte) 0x51, (byte) 0x81, (byte) 0x63, (byte) 0x5D, (byte) 0x00};
                 byte[] full = ByteUtil.concat(cmd, RileyLinkUtil.encodeData(RileyLinkUtil.appendChecksum(wakey)));
@@ -303,8 +339,18 @@ public class RoundtripService extends Service {
                 } else {
                     Log.d(TAG, "No data from Rileylink (timeout)");
                 }
+                */
 
-                // try full wakey
+                    String wakeupString = "020105000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+                    MinimedCommandPacket wakeyCmd = mPump.powerMessageWithArgs(wakeupString);
+                    mPump.sendToMinimed(wakeyCmd.getBytestream(), sendChannel, 200, 0);
+                    //SystemClock.sleep(50);
+                    Log.w(TAG, "Listening for 15000 ms");
+                    mPump.orderRileyLinkToListen(recvChannel, 15000);
+                    responsePacket = mPump.waitForResponse(20000);
+
+                /*
+                // old full wakey
                 byte[] fullWakeyCmd = new byte[]{RileyLinkPacket.RILEYLINK_CMD_SEND_AND_LISTEN, sendChannel, (byte) 200, 1, recvChannel, 2, 0, 3};
                 String wakeupString = "A75181635D0201050000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
                 byte[] fullWakey = ByteUtil.concat(cmd, ByteUtil.fromHexString(wakeupString));
@@ -315,6 +361,8 @@ public class RoundtripService extends Service {
                     Log.d(TAG, "RileyLink says: "+ByteUtil.showPrintable(response));
                 } else {
                     Log.d(TAG, "No data from Rileylink (timeout)");
+                }
+                */
                 }
             }
         }

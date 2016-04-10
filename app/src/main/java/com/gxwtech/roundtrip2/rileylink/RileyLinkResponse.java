@@ -8,6 +8,7 @@ import com.gxwtech.roundtrip2.Packet;
 public class RileyLinkResponse extends Packet {
     private static final String TAG = "RileyLinkResponse";
 
+    public static final byte EMPTY_PACKET = (byte)0x00;
     public static final byte TIMEOUT = (byte) 0xAA;
     public static final byte INTERRUPTED = (byte) 0xBB;
     public static final byte ZERO_DATA = (byte) 0xCC;

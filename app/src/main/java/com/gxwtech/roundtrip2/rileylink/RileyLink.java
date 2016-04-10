@@ -102,7 +102,7 @@ public class RileyLink {
                 } else {
                     Log.e(TAG, "onCharacteristicRead: RLChara not found in map");
                 }
-                Log.d(TAG, "onCharacteristicRead(" + characteristic.toString() + "," + status + ")");
+                //Log.d(TAG, "onCharacteristicRead(" + characteristic.toString() + "," + status + ")");
             }
 
             @Override
@@ -114,7 +114,7 @@ public class RileyLink {
                 } else {
                     Log.e(TAG, "onCharacteristicWrite: RLChara not found in map");
                 }
-                Log.d(TAG, "onCharacteristicWrite(" + characteristic.toString() + "," + status + ")");
+                //Log.d(TAG, "onCharacteristicWrite(" + characteristic.toString() + "," + status + ")");
             }
 
             @Override
@@ -128,7 +128,7 @@ public class RileyLink {
                     } else {
                         Log.e(TAG,"onCharacteristicChanged: can't update ?!?!?!");
                     }
-                    Log.e(TAG, "onCharacteristicChanged: " + rlChara.getName());
+                    //Log.w(TAG, "onCharacteristicChanged: " + rlChara.getName());
                 } else {
                     Log.e(TAG, "onCharacteristicChanged: RLChara not found in map");
                 }
@@ -262,29 +262,34 @@ public class RileyLink {
         }
     }
 
-    public void writeTo(byte[] data, RLCharacteristic chara) {
+    public void writeTo(byte[] data, RLCharacteristic chara, int timeoutMS) {
         /* first byte is length of rest of message */
         byte dataToWrite[] = new byte[1];
         dataToWrite[0] = (byte) (data.length);
         dataToWrite = ByteUtil.concat(dataToWrite, data);
-        chara.doWriteBlocking(dataToWrite);
+        chara.doWriteBlocking(dataToWrite,timeoutMS);
     }
 
-    public byte[] readFrom(RLCharacteristic chara) {
-        return chara.doReadBlocking();
+    public void writeToData(byte[] bytes, int timeoutMS) {
+        writeTo(bytes, dataCharacteristic, timeoutMS);
     }
 
-    public byte[] readResponseCount() {
-        return readFrom(responseCountCharacteristic);
+
+    public byte[] readFrom(RLCharacteristic chara,int timeoutMS) {
+        return chara.doReadBlocking(timeoutMS);
     }
 
-    public byte[] writeAndRead(byte[] data, RLCharacteristic chara) {
-        writeTo(data, chara);
-        return readFrom(chara);
+    public byte[] readResponseCount(int timeoutMS) {
+        return readFrom(responseCountCharacteristic,timeoutMS);
     }
 
-    public byte[] writeAndReadData(byte[] data) {
-        return writeAndRead(data, dataCharacteristic);
+    public byte[] writeAndRead(byte[] data, RLCharacteristic chara, int timeoutMS) {
+        writeTo(data, chara, timeoutMS);
+        return readFrom(chara, timeoutMS);
+    }
+
+    public byte[] writeAndReadData(byte[] data, int timeoutMS) {
+        return writeAndRead(data, dataCharacteristic, timeoutMS);
     }
 
     public void close() {
@@ -298,7 +303,7 @@ public class RileyLink {
     public void testOneRead(RLCharacteristic c) {
         byte[] rval;
         if (c != null) {
-            rval = c.doReadBlocking();
+            rval = c.doReadBlocking(500);
             if (rval != null) {
                 Log.i(TAG, "test: (len=" + rval.length + ") read " + c.getName() + "=" + ByteUtil.shortHexString(rval));
             } else {
@@ -312,33 +317,29 @@ public class RileyLink {
         testOneRead(timerTickCharacteristic);
         testOneRead(customNameCharacteristic);
         testOneRead(responseCountCharacteristic);
-        byte[] rval = writeAndRead(new byte[]{RileyLinkPacket.RILEYLINK_CMD_GET_VERSION}, dataCharacteristic);
+        byte[] rval = writeAndRead(new byte[]{RileyLinkPacket.RILEYLINK_CMD_GET_VERSION}, dataCharacteristic, 500);
         Log.e(TAG, "GetVersionCommand returned " + ByteUtil.shortHexString(rval));
         //RileyLinkPacket hailMary = new SendPacketCmd(1,200,0,new byte[] {(byte) 0xa7, 0x51, (byte) 0x81, 0x63, 0x5d, 0x00});
         //RileyLinkPacket pressTheButton = new SendPacketCmd(1,0,0,new byte[] {(byte) 0xa7, 0x51, (byte)0x81, 0x63, 0x5b, (byte)0x80, 0x01, 0x04});
     }
 
-    public void writeToData(byte[] bytes) {
-        writeTo(bytes, dataCharacteristic);
-    }
-
     public byte[] readFromData(int timeoutMS) {
         byte[] rval = null;
-        Log.d(TAG,"readFromData waitForData top:"+waitForData.toString());
+        //Log.d(TAG,"readFromData waitForData top:"+waitForData.toString());
         boolean dataAvailable = waitForData.tryAcquire();
         if (dataAvailable) {
-            Log.d(TAG,"readFromData: data available... going and getting it");
-            rval = dataCharacteristic.doReadBlocking();
+            //Log.d(TAG,"readFromData: data available... going and getting it");
+            rval = dataCharacteristic.doReadBlocking(timeoutMS);
         } else {
-            Log.w(TAG,"readFromData: data not available... waiting for data");
+            //Log.w(TAG,"readFromData: data not available... waiting for data");
             try {
                 // block here until data is available. [DATA-AVAIL]
                 // This also re-locks the waitForCallback semaphore.
                 dataAvailable = waitForData.tryAcquire(timeoutMS, TimeUnit.MILLISECONDS);
                 if (dataAvailable) {
                     // Data has become available, go get it.
-                    Log.d(TAG, "readFromData: data has become available, reading....");
-                    rval = dataCharacteristic.doReadBlocking();
+                    //Log.d(TAG, "readFromData: data has become available, reading....");
+                    rval = dataCharacteristic.doReadBlocking(timeoutMS);
                 } else {
                     Log.e(TAG, "readFromData: timeout waiting for data:");
                     return null;
@@ -355,14 +356,14 @@ public class RileyLink {
         waitForData.release();
     }
 
-    RileyLinkResponse getVersion() {
+    RileyLinkResponse getVersion(int timeoutMS) {
         RileyLinkPacket pkt = new RLPacket_GetVersion();
-        return new RileyLinkResponse(writeAndReadData(pkt.getBytestream()));
+        return new RileyLinkResponse(writeAndReadData(pkt.getBytestream(),timeoutMS));
     }
 
-    RileyLinkResponse sendAndListen(byte[] payload) {
+    RileyLinkResponse sendAndListen(byte[] payload, int timeoutMS) {
         RileyLinkPacket pkt = new RLPacket_SendAndListen(payload);
-        return new RileyLinkResponse(writeAndReadData(pkt.getBytestream()));
+        return new RileyLinkResponse(writeAndReadData(pkt.getBytestream(),timeoutMS));
     }
 }
 

@@ -49,7 +49,9 @@ public class RileyLinkUtil {
         }
         byte[] rval = new byte[input.length+1];
         System.arraycopy(input, 0, rval, 0, input.length);
-        rval[input.length] = CRC.crc8(input);
+        byte mycrc = CRC.crc8(input);
+        Log.d(TAG,String.format("Adding checksum 0x%02X to %d byte array from 0x%02X to 0x%02X",mycrc,input.length,input[0],input[input.length-1]));
+        rval[input.length] = mycrc;
         return rval;
     }
 
@@ -183,6 +185,9 @@ public class RileyLinkUtil {
     }
 
     public static byte[] encodeData(byte[] data) {
+        if ((data.length % 2)!=0) {
+            Log.e(TAG,"Warning: data is odd number of bytes");
+        }
         // use arraylists because byte[] is annoying.
         ArrayList<Byte> inData = fromBytes(data);
         ArrayList<Byte> outData = new ArrayList<>();
@@ -221,10 +226,10 @@ public class RileyLinkUtil {
         // convert back to byte[]
         byte[] rval = toBytes(outData);
 
-        Log.d(TAG, "encodeData: (length " + data.length + ") input is " + toHexString(data));
+        //Log.d(TAG, "encodeData: (length " + data.length + ") input is " + toHexString(data));
         //Log.e(TAG,"encodeData: input with OtherCRC is " + toHexString(toBytes(dataPlusCrc)));
         //Log.e(TAG,"encodeData: input with My CRC is " +toHexString(toBytes(dataPlusMyCrc)));
-        Log.d(TAG, "encodeData: (length " + rval.length + ") output is " + toHexString(rval));
+        //Log.d(TAG, "encodeData: (length " + rval.length + ") output is " + toHexString(rval));
         return rval;
 
     }
@@ -257,22 +262,48 @@ public class RileyLinkUtil {
     }
 
     public static byte[] decodeRF(byte[] raw) {
+        if ((raw.length % 2) != 0) {
+            Log.e(TAG,"Warning: data is odd number of bytes");
+        }
         byte[] rval = new byte[]{};
         int availableBits = 0;
         int codingErrors = 0;
         int x = 0;
-        Log.w(TAG,"decodeRF: untested code");
+        //Log.w(TAG,"decodeRF: untested code");
+        //Log.w(TAG,String.format("Decoding %d bytes: %s",raw.length,ByteUtil.shortHexString(raw)));
         for (int i=0; i<raw.length; i++) {
-            x = (x << 8) + raw[i];
-            availableBits += 8;
-            int highIndex = codeIndex((byte)(x>>(availableBits - 6)));
-            int lowIndex = codeIndex((byte)((x >> (availableBits - 12)) & 0b111111));
-            if ((highIndex >=0) && (lowIndex >=0)) {
-                byte decoded = (byte)((codes[highIndex] << 4) + codes[lowIndex]);
-                rval = ByteUtil.concat(rval,decoded);
-            } else {
-                codingErrors++;
+            int unsignedValue = raw[i];
+            if (unsignedValue < 0) {
+                unsignedValue += 256;
             }
+            x = (x << 8) + unsignedValue;
+            availableBits += 8;
+            if (availableBits >= 12) {
+                int highcode = (x >> (availableBits - 6)) & 0x3F;
+                int highIndex = codeIndex((byte) ((x >> (availableBits - 6)) & 0x3F));
+                int lowcode = (x >> (availableBits - 12)) & 0x3F;
+                int lowIndex = codeIndex((byte) ((x >> (availableBits - 12)) & 0x3F));
+                if ((highIndex >= 0) && (lowIndex >= 0)) {
+                    byte decoded = (byte) ((highIndex << 4) + lowIndex);
+                    rval = ByteUtil.concat(rval, decoded);
+                    /*
+                    Log.d(TAG,String.format("i=%d,x=0x%08X,0x%02X->0x%02X, 0x%02X->0x%02X, result: 0x%02X, %d bits remaining, errors %d, bytes remaining: %s",
+                            i,x,highcode,highIndex, lowcode, lowIndex,decoded,availableBits,codingErrors,ByteUtil.shortHexString(ByteUtil.substring(raw,i+1,raw.length-i-1))));
+                    */
+                } else {
+                    //Log.d(TAG,String.format("i=%d,x=%08X, coding error: highcode=0x%02X, lowcode=0x%02X, %d bits remaining",i,x,highcode,lowcode,availableBits));
+                    codingErrors++;
+                }
+
+                availableBits -= 12;
+                x = x & (0x0000ffff >> (16 - availableBits));
+            } else {
+                //Log.d(TAG,String.format("i=%d, skip: x=0x%08X, available bits %d",i,x,availableBits));
+            }
+        }
+        if (availableBits !=0) {
+            Log.e(TAG,"decodeRF: failed clean decode -- extra bits available ("+availableBits+")");
+            codingErrors++;
         }
         if (codingErrors>0) {
             Log.e(TAG, "decodeRF: "+codingErrors+" coding errors encountered.");

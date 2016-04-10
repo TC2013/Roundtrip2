@@ -21,6 +21,8 @@ public class ByteUtil {
         return (byte) (s % 256);
     }
 
+    /* For Reference: static void System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length) */
+
     public static byte[] concat(byte[] a, byte[] b) {
         int aLen = a.length;
         int bLen = b.length;

@@ -48,4 +48,27 @@ public class RileyLinkPacket extends Packet {
         return getRaw();
     }
 
+    public static String getDescriptionForCommandByte(byte c) {
+        switch (c) {
+            case RILEYLINK_CMD_INVALID:
+                return "RILEYLINK_CMD_INVALID";
+            case RILEYLINK_CMD_GET_STATE:
+                return "RILEYLINK_CMD_GET_STATE";
+            case RILEYLINK_CMD_GET_VERSION:
+                return "RILEYLINK_CMD_GET_VERSION";
+            case RILEYLINK_CMD_GET_PACKET:
+                return "RILEYLINK_CMD_GET_PACKET";
+            case RILEYLINK_CMD_SEND_PACKET:
+                return "RILEYLINK_CMD_SEND_PACKET";
+            case RILEYLINK_CMD_SEND_AND_LISTEN:
+                return "RILEYLINK_CMD_SEND_AND_LISTEN";
+            case RILEYLINK_CMD_UPDATE_REGISTER:
+                return "RILEYLINK_CMD_UPDATE_REGISTER";
+            case RILEYLINK_CMD_RESET:
+                return "RILEYLINK_CMD_RESET";
+            default:
+                return String.format("(Invalid RileyLink command byte(0x%02X)", c);
+        }
+    }
+
 }

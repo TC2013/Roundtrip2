@@ -3,10 +3,17 @@ package com.gxwtech.roundtrip2;
 import android.util.Log;
 
 import com.gxwtech.roundtrip2.message.MessageType;
+import com.gxwtech.roundtrip2.rileylink.RLPacket_Listen;
+import com.gxwtech.roundtrip2.rileylink.RLPacket_Send;
+import com.gxwtech.roundtrip2.rileylink.RLPacket_SendAndListen;
 import com.gxwtech.roundtrip2.rileylink.RileyLinkPacket;
 import com.gxwtech.roundtrip2.rileylink.RileyLink;
+import com.gxwtech.roundtrip2.rileylink.RileyLinkResponse;
 import com.gxwtech.roundtrip2.rileylink.RileyLinkUtil;
 import com.gxwtech.roundtrip2.util.ByteUtil;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by geoff on 4/8/16.
@@ -71,15 +78,11 @@ public class Minimed {
     }
 
     public MinimedPacket sendAndListen(byte[] msg, int timeoutMS, int repeat, int msBetweenPackets, int retryCount) {
-        byte[] pkt = new byte[]{RileyLinkPacket.RILEYLINK_CMD_SEND_AND_LISTEN};
-        byte sendChannel = 0;
-        byte listenChannel = 0;
-        pkt = ByteUtil.concat(pkt,new byte[] {sendChannel,(byte)repeat,(byte)msBetweenPackets,listenChannel,
-                ByteUtil.highByte((short)timeoutMS),ByteUtil.lowByte((short)timeoutMS),(byte)retryCount});
-        pkt = ByteUtil.concat(pkt,RileyLinkUtil.encodeData(RileyLinkUtil.appendChecksum(msg)));
+        RLPacket_SendAndListen pkt = new RLPacket_SendAndListen((byte)0,(byte)repeat,(byte)msBetweenPackets,(byte)0,timeoutMS,(byte)retryCount,msg);
+
         int totalTimeout = repeat * msBetweenPackets + timeoutMS + EXPECTED_MAX_BLE_LATENCY_MS;
-        byte[] response = mRileyLink.writeAndReadData(pkt);
-        //byte[] response = mRileyLink.doCmd(cmd,totalTimeout);
+        byte[] response = mRileyLink.writeAndReadData(pkt.getBytestream(),totalTimeout);
+
         if ((response!=null) && (response.length > 2)) {
             // we got something!
             Log.e(TAG, "sendAndListen: received: " + ByteUtil.shortHexString(response));
@@ -91,8 +94,53 @@ public class Minimed {
         return null;
     }
 
+    public void sendToMinimed(byte[] msg, int channel, int repeatCount, int delayMS) {
+        Log.d(TAG,"sendToMinimed: payload is "+ByteUtil.shortHexString(msg));
+        byte[] payloadWithChecksum = RileyLinkUtil.appendChecksum(msg);
+        Log.d(TAG,"sendToMinimed: payload with checksum: "+ByteUtil.shortHexString(payloadWithChecksum));
+        byte[] encoded = RileyLinkUtil.encodeData(payloadWithChecksum);
+        Log.d(TAG,"sendToMinimed: encoded payload is: "+ ByteUtil.shortHexString(encoded));
+        //byte[] encodedNullAppended = ByteUtil.concat(encoded,(byte)0);
+        RLPacket_Send pkt = new RLPacket_Send((byte)channel, (byte)repeatCount,(byte)delayMS,encoded);
+        int totalTimeout = repeatCount * delayMS + EXPECTED_MAX_BLE_LATENCY_MS;
+        Log.d(TAG,"sendToMinimed: data to send: "+ByteUtil.shortHexString(pkt.getBytestream()));
+        mRileyLink.writeToData(pkt.getBytestream(),totalTimeout);
+    }
+
+    public void orderRileyLinkToListen(int listenChannel, int timeoutMS) {
+        RLPacket_Listen pkt = new RLPacket_Listen((byte)listenChannel,timeoutMS);
+        mRileyLink.writeToData(pkt.getBytestream(),timeoutMS); // two different uses of timeoutMS here!
+    }
+
+    public MinimedPacket waitForResponse(int timeoutMS) {
+        MinimedPacket rval = new MinimedPacket();
+        byte[] response = mRileyLink.readFromData(timeoutMS);
+        if (response == null) {
+            Log.e(TAG,"waitForResponse: NULL response");
+        } else {
+            if (response.length == 0) {
+                Log.e(TAG,"waitForResponse: EMPTY response");
+            } else {
+                RileyLinkResponse rlResponse = new RileyLinkResponse(response);
+                if (rlResponse.responseType() == RileyLinkResponse.INTERRUPTED) {
+                    Log.e(TAG,"RileyLink was interrupted");
+                } else if (rlResponse.responseType() == RileyLinkResponse.TIMEOUT) {
+                    Log.e(TAG,"RileyLink reports timeout");
+                } else if (rlResponse.responseType() == RileyLinkResponse.ZERO_DATA) {
+                    Log.e(TAG,"RileyLink reports ZERO_DATA");
+                } else if (rlResponse.responseType() == RileyLinkResponse.EMPTY_PACKET) {
+                    Log.e(TAG,"RileyLink reports No Response From Pump");
+                } else {
+                    Log.w(TAG,"waitForResponse: got something: "+ ByteUtil.shortHexString(response));
+                }
+                rval.initFromRadioData(response);
+            }
+        }
+        return rval;
+    }
+
     public void checkResponseCount() {
-        byte[] responseCount = mRileyLink.readResponseCount();
+        byte[] responseCount = mRileyLink.readResponseCount(500);
         if (responseCount == null) {
             Log.e(TAG,"checkResponseCount: NULL!");
             return;
@@ -128,5 +176,9 @@ public class Minimed {
         return true;
     }
 
+    void scanForPump() {
+        List<Float> frequencies = new ArrayList<>();
+        wakeup(5);
+    }
 
 }

@@ -6,6 +6,7 @@ import android.content.Context;
 import android.os.SystemClock;
 import android.util.Log;
 
+import com.gxwtech.roundtrip2.PacketDecoder;
 import com.gxwtech.roundtrip2.bluetooth.GattAttributes_RileyLinkRFSpy;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 
@@ -46,6 +47,7 @@ public class RLCharacteristic {
     public byte[] readMyChara() {
         byte[] rval = chara.getValue();
         Log.i(TAG,"(Read "+getName()+")("+ByteUtil.shortHexString(rval)+")");
+        PacketDecoder.decodePacket(rval);
         return rval;
     }
     /*
@@ -59,22 +61,25 @@ public class RLCharacteristic {
      */
 
     // doReadBlocking is called from the main Service thread (ONLY!!)
-    public byte[] doReadBlocking() {
+    public byte[] doReadBlocking(int timeoutMS) {
         //Log.w(TAG,"doReadBlocking: device access: "+deviceAccess.toString());
         //Log.w(TAG,"doReadBlocking: waitForCallback: "+waitForCallback.toString());
         boolean acquired;
         try {
-            acquired = deviceAccess.tryAcquire(DEFAULT_SEMAPHORE_WAITTIME_MS, TimeUnit.MILLISECONDS);
+            acquired = deviceAccess.tryAcquire(timeoutMS, TimeUnit.MILLISECONDS);
             if (acquired) {
                 // start the asynch read process.  If it fails, release sema.
+                // TODO: fix this
+                int timeoutRemaining = timeoutMS;
                 int retries = 50;
                 boolean success = false;
-                while (retries-- > 0) {
+                while ((retries-- > 0) && (timeoutRemaining > 0)) {
                     if (mGatt.readCharacteristic(chara)) {
                         success = true;
                         break;
                     }
                     SystemClock.sleep(50/*ms*/);
+                    timeoutRemaining -= 50;
 
                 }
                 if (!success) {
@@ -88,7 +93,7 @@ public class RLCharacteristic {
                     // block here until data is available. [DATA-AVAIL]
                     // This also re-locks the waitForCallback semaphore.
                     boolean gotCallback;
-                    gotCallback = waitForCallback.tryAcquire(DEFAULT_SEMAPHORE_WAITTIME_MS, TimeUnit.MILLISECONDS);
+                    gotCallback = waitForCallback.tryAcquire(timeoutRemaining, TimeUnit.MILLISECONDS);
                     if (gotCallback) {
                         // Data has become available, go get it.
                         data = readMyChara();
@@ -114,23 +119,21 @@ public class RLCharacteristic {
         // Callback is informing us that the value-read has been completed, we can use the data.
         // This is being run on callback thread.
         // get value
-        Log.d(TAG,String.format("didRead(status=%d)",status));
+        //Log.d(TAG,String.format("didRead(status=%d)",status));
         waitForCallback.release();  // UNBLOCKS service thread at [DATA-AVAIL]
     }
 
     private void writeMyChara(byte[] value) {
         Log.i(TAG,"(Write "+getName()+")("+ ByteUtil.shortHexString(value)+")");
         chara.setValue(value);
+        PacketDecoder.decodePacket(value);
     }
 
-    public static final int DEFAULT_SEMAPHORE_WAITTIME_MS = 5000;
-
-
-    public void doWriteBlocking(byte[] value) {
+    public void doWriteBlocking(byte[] value, int timeoutMS) {
         //Log.w(TAG,"doWriteBlocking: device access: "+deviceAccess.toString());
         //Log.w(TAG,"doWriteBlocking: waitForCallback: "+waitForCallback.toString());
         try {
-            boolean acquired = deviceAccess.tryAcquire(DEFAULT_SEMAPHORE_WAITTIME_MS, TimeUnit.MILLISECONDS);
+            boolean acquired = deviceAccess.tryAcquire(timeoutMS, TimeUnit.MILLISECONDS);
             if (acquired) {
                 //chara.setValue(value);
                 writeMyChara(value);
@@ -144,7 +147,7 @@ public class RLCharacteristic {
                 try {
                     // Block until the callback says it completed the write.
                     // this also re-locks the waitForCallback semaphore.
-                    boolean gotCallback = waitForCallback.tryAcquire(DEFAULT_SEMAPHORE_WAITTIME_MS, TimeUnit.MILLISECONDS);
+                    boolean gotCallback = waitForCallback.tryAcquire(timeoutMS, TimeUnit.MILLISECONDS);
                     if (!gotCallback) {
                         Log.e(TAG,"doWriteBlocking: timeout waiting for callback:" +getName());
                     } else {
@@ -165,7 +168,7 @@ public class RLCharacteristic {
     public void didWrite(int status) {
         // Callback is informing us that the value-write has been completed.
         // This is being run on callback thread.
-        Log.d(TAG,String.format("didWrite(status=%d)",status));
+        //Log.d(TAG,String.format("didWrite(status=%d)",status));
         waitForCallback.release();
     }
 

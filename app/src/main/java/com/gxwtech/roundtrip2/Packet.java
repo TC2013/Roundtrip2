@@ -37,4 +37,10 @@ public class Packet {
             data.add(bytes[i]);
         }
     }
+    public int size() {
+        return data.size();
+    }
+    public int length() {
+        return size();
+    }
 }

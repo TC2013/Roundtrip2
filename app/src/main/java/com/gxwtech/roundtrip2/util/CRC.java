@@ -1,5 +1,7 @@
 package com.gxwtech.roundtrip2.util;
 
+import android.util.Log;
+
 /**
  * Created by geoff on 4/27/15.
  */
@@ -44,6 +46,7 @@ public class CRC {
         }
         // orig python:
         //result = klass.lookup[ ( result ^ block[ i ] & 0xFF ) ]
+        Log.d("CRC8",String.format("Checksum of %d bytes, from 0x%02X through 0x%02x is 0x%02X",len,data[0],data[len-1],result));
         return result;
 
     }
