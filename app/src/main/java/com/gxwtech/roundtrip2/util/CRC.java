@@ -1,4 +1,4 @@
-package com.gxwtech.roundtrip2.bluetooth;
+package com.gxwtech.roundtrip2.util;
 
 /**
  * Created by geoff on 4/27/15.

@@ -2,7 +2,8 @@ package com.gxwtech.roundtrip2.rileylink;
 
 import android.util.Log;
 
-import com.gxwtech.roundtrip2.bluetooth.CRC;
+import com.gxwtech.roundtrip2.util.CRC;
+import com.gxwtech.roundtrip2.util.ByteUtil;
 
 import java.util.ArrayList;
 
@@ -169,6 +170,18 @@ public class RileyLinkUtil {
     }
 */
 
+    public static final byte[] codes = new byte[] {21,49,50,35,52,37,38,22,26,25,42,11,44,13,14,28 };
+
+    /* O(n) lookup.  Run on an O(n) translation of a byte-stream, gives O(n**2) performance. Sigh. */
+    public static int codeIndex(byte b) {
+        for (int i=0; i< codes.length; i++) {
+            if (b == codes[i]) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     public static byte[] encodeData(byte[] data) {
         // use arraylists because byte[] is annoying.
         ArrayList<Byte> inData = fromBytes(data);
@@ -179,7 +192,6 @@ public class RileyLinkUtil {
         */
         //dataPlusMyCrc.add(CRC.crc8(data));
 
-        final byte[] codes = new byte[] {21,49,50,35,52,37,38,22,26,25,42,11,44,13,14,28 };
         int acc = 0;
         int bitcount = 0;
         int i;
@@ -209,10 +221,10 @@ public class RileyLinkUtil {
         // convert back to byte[]
         byte[] rval = toBytes(outData);
 
-        Log.e(TAG, "encodeData: (length " + data.length + ") input is " + toHexString(data));
+        Log.d(TAG, "encodeData: (length " + data.length + ") input is " + toHexString(data));
         //Log.e(TAG,"encodeData: input with OtherCRC is " + toHexString(toBytes(dataPlusCrc)));
         //Log.e(TAG,"encodeData: input with My CRC is " +toHexString(toBytes(dataPlusMyCrc)));
-        Log.e(TAG, "encodeData: (length " + rval.length + ") output is " + toHexString(rval));
+        Log.d(TAG, "encodeData: (length " + rval.length + ") output is " + toHexString(rval));
         return rval;
 
     }
@@ -242,6 +254,30 @@ public class RileyLinkUtil {
         bs = encodeData(new byte[]{(byte) 0xa7, 0x12});
         bs = encodeData(new byte[]{(byte) 0xa7, 0x12, (byte) 0xa7});
         return;
+    }
+
+    public static byte[] decodeRF(byte[] raw) {
+        byte[] rval = new byte[]{};
+        int availableBits = 0;
+        int codingErrors = 0;
+        int x = 0;
+        Log.w(TAG,"decodeRF: untested code");
+        for (int i=0; i<raw.length; i++) {
+            x = (x << 8) + raw[i];
+            availableBits += 8;
+            int highIndex = codeIndex((byte)(x>>(availableBits - 6)));
+            int lowIndex = codeIndex((byte)((x >> (availableBits - 12)) & 0b111111));
+            if ((highIndex >=0) && (lowIndex >=0)) {
+                byte decoded = (byte)((codes[highIndex] << 4) + codes[lowIndex]);
+                rval = ByteUtil.concat(rval,decoded);
+            } else {
+                codingErrors++;
+            }
+        }
+        if (codingErrors>0) {
+            Log.e(TAG, "decodeRF: "+codingErrors+" coding errors encountered.");
+        }
+        return rval;
     }
 
     public static String toHexString(byte[] array) {
