@@ -3,11 +3,7 @@ package com.gxwtech.roundtrip2;
 import android.app.IntentService;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCallback;
-import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothManager;
 import android.content.BroadcastReceiver;
 import android.content.Intent;
@@ -25,9 +21,9 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.gxwtech.roundtrip2.bluetooth.BLEDeviceScanner;
+import com.gxwtech.roundtrip2.rileylink.RileyLinkPacket;
 import com.gxwtech.roundtrip2.rileylink.RileyLink;
-import com.gxwtech.roundtrip2.rtmessage.RTMessage;
+import com.gxwtech.roundtrip2.rileylink.RileyLinkUtil;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 
 /**
@@ -39,6 +35,7 @@ import com.gxwtech.roundtrip2.util.ByteUtil;
  */
 public class RoundtripService extends Service {
     private static final String TAG="RoundtripService";
+    private static final int DEFAULT_SEMAPHORE_WAITTIME_MS = 2000;
     private static final String WAKELOCKNAME = "com.gxwtech.roundtrip2.RoundtripServiceWakeLock";
     private static volatile PowerManager.WakeLock lockStatic = null;
 
@@ -63,6 +60,7 @@ public class RoundtripService extends Service {
     private Messenger mMessenger;
     private Handler mMessageHandler;
     private RileyLink mRileyLink;
+    private Minimed mPump;
     private BroadcastReceiver mBroadcastReceiver;
     private Context mContext;
     private BluetoothManager mBluetoothManager;
@@ -79,6 +77,7 @@ public class RoundtripService extends Service {
         Log.d(TAG, "onCreate");
         mContext = getApplicationContext();
         mRileyLink = new RileyLink(this); // constructed, but not yet useful.
+        mPump = new Minimed();
         mMessageHandler = new MessageHandler();
         mMessenger = new Messenger(mMessageHandler);
 
@@ -253,6 +252,7 @@ public class RoundtripService extends Service {
                         if (mDevice != null) {
                             mRileyLink = new RileyLink(getApplicationContext());
                             mRileyLink.init(mDevice);
+                            mPump.setRileyLink(mRileyLink);
                         } else {
                             Log.e(TAG, "Failed to get device " + deviceAddress);
                         }
@@ -266,10 +266,58 @@ public class RoundtripService extends Service {
             }
         } else if (RT2Const.MSG_BLE_TEST.equals(ble_message)) {
             // do what?
-            mRileyLink.test();
+            //mRileyLink.test();
+            runTest();
+        }
+
+    }
+
+    private void runTest() {
+        //mPump.wakeup(5);
+        //mPump.pressButton();
+
+        // See if the RileyLink is listening
+        mRileyLink.writeToData(new byte[] {RileyLinkPacket.RILEYLINK_CMD_GET_VERSION});
+        byte[] response = mRileyLink.readFromData(500);
+        if (response!=null) {
+            Log.d(TAG,"Read from Rileylink: "+ByteUtil.shortHexString(response));
+            Log.d(TAG, "RileyLink says: "+ByteUtil.showPrintable(response));
+        } else {
+            Log.d(TAG,"No data from Rileylink (timeout)");
         }
 
 
+
+        for (byte sendChannel = 0; sendChannel < 5; sendChannel++) {
+            for (byte recvChannel = 0; recvChannel < 5; recvChannel++) {
+                // try simple wakey
+                Log.e(TAG,String.format("TESTING SEND %d RECEIVE %d",sendChannel,recvChannel));
+                byte[] cmd = new byte[]{RileyLinkPacket.RILEYLINK_CMD_SEND_AND_LISTEN, sendChannel, 0, 0, recvChannel, 1, 0, 3};
+                byte[] wakey = new byte[]{(byte) 0xA7, (byte) 0x51, (byte) 0x81, (byte) 0x63, (byte) 0x5D, (byte) 0x00};
+                byte[] full = ByteUtil.concat(cmd, RileyLinkUtil.encodeData(RileyLinkUtil.appendChecksum(wakey)));
+                mRileyLink.writeToData(full);
+                response = mRileyLink.readFromData(5000);
+                if (response != null) {
+                    Log.d(TAG, "Read from Rileylink: " + ByteUtil.shortHexString(response));
+                    Log.d(TAG, "RileyLink says: "+ByteUtil.showPrintable(response));
+                } else {
+                    Log.d(TAG, "No data from Rileylink (timeout)");
+                }
+
+                // try full wakey
+                byte[] fullWakeyCmd = new byte[]{RileyLinkPacket.RILEYLINK_CMD_SEND_AND_LISTEN, sendChannel, (byte) 200, 1, recvChannel, 2, 0, 3};
+                String wakeupString = "A75181635D0201050000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+                byte[] fullWakey = ByteUtil.concat(cmd, ByteUtil.fromHexString(wakeupString));
+                mRileyLink.writeToData(fullWakey);
+                response = mRileyLink.readFromData(5000);
+                if (response != null) {
+                    Log.d(TAG, "Read from Rileylink: " + ByteUtil.shortHexString(response));
+                    Log.d(TAG, "RileyLink says: "+ByteUtil.showPrintable(response));
+                } else {
+                    Log.d(TAG, "No data from Rileylink (timeout)");
+                }
+            }
+        }
 
     }
 
