@@ -9,39 +9,8 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.gxwtech.roundtrip2.MainActivity">
 
-    <LinearLayout
-        android:orientation="vertical"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <LinearLayout
-            android:orientation="horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <ImageButton
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@drawable/ic_rl_s_mdpi"
-                android:id="@+id/imageButtonRLStatus"
-                android:onClick="onRLScanButtonClicked" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textAppearance="?android:attr/textAppearanceLarge"
-                android:text="RileyLink Status"
-                android:id="@+id/textView2" />
-
-        </LinearLayout>
-
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="TEST"
-            android:id="@+id/buttonTEST"
-            android:onClick="onTESTButtonClicked" />
-
-    </LinearLayout>
-
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Hello World!" />
 </RelativeLayout>

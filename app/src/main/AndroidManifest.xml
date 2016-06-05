@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.gxwtech.roundtrip2">
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
-
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
     <application
         android:allowBackup="true"
@@ -16,37 +8,12 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity"
-            android:label="@string/app_name" >
-
+        <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-
-        <service
-            android:name=".RoundtripService"
-            android:label="@string/roundtrip_service_name"
-            android:exported="false" >
-            <intent-filter>
-                <action android:name="com.gxwtech.roundtrip2.RoundtripService" />
-                <action android:name="com.gxwtech.roundtrip2.MainActivity" />
-                <action android:name="com.gxwtech.roundtrip2.DeviceScanActivity" />
-            </intent-filter>
-        </service>
-        <activity
-            android:name=".DeviceScanActivity"
-            android:label="@string/title_activity_device_scan"
-            android:theme="@style/AppTheme.NoActionBar">
-            <intent-filter>
-                <action android:name="com.gxwtech.roundtrip2.DeviceScanActivity" />
-                <action android:name="com.gxwtech.roundtrip2.RoundtripService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.gxwtech.roundtrip2.MainActivity"
-                />
         </activity>
     </application>
 
