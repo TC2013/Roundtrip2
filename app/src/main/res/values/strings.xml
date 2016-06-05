@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Roundtrip2</string>
+    <string name="roundtrip_service_name">RoundtripService</string>
 </resources>
