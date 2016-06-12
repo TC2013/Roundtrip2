@@ -1,6 +1,10 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
+import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 public class PrimePumpEvent extends TimeStampedRecord {
@@ -19,9 +23,23 @@ public class PrimePumpEvent extends TimeStampedRecord {
         amount = (double)(asUINT8(data[4])<<2) / 40.0;
         programmedAmount = (double)(asUINT8(data[2])<<2) / 40.0;
         primeType = programmedAmount == 0 ? "manual" : "fixed";
-        addValue("amount", amount);
-        addValue("programmedAmount", programmedAmount);
-        addValue("primeType",primeType);
         return true;
     }
+
+    @Override
+    public boolean readFromBundle(Bundle in) {
+        amount = in.getDouble("amount",0.0);
+        programmedAmount = in.getDouble("programmedAmount",0);
+        primeType = in.getString("primeType","unknown");
+        return super.readFromBundle(in);
+    }
+
+    @Override
+    public void writeToBundle(Bundle in) {
+        in.putDouble("amount",amount);
+        in.putDouble("programmedAmount",programmedAmount);
+        in.putString("primeType",primeType);
+        super.writeToBundle(in);
+    }
+
 }

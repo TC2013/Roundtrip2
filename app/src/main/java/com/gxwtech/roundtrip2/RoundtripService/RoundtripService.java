@@ -31,6 +31,11 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 
 /**
@@ -57,10 +62,15 @@ public class RoundtripService extends Service {
     private byte[] pumpIDBytes;
     private String mRileylinkAddress;
 
+    // cache of most recently received set of pump history pages. Probably shouldn't be here.
+    ArrayList<Page> mHistoryPages;
+
+
     // Our hardware/software connection
     private RileyLinkBLE rileyLinkBLE; // android-bluetooth management
     private RFSpy rfspy; // interface for 916MHz radio.
     private PumpManager pumpManager; // interface to Minimed
+
 
     public RoundtripService() {
         super();
@@ -160,7 +170,86 @@ public class RoundtripService extends Service {
                         } else if (action.equals(RT2Const.IPC.MSG_PUMP_tunePump)) {
                             pumpManager.tunePump();
                         } else if (action.equals(RT2Const.IPC.MSG_PUMP_fetchHistory)) {
-                            ArrayList<Page> pages = pumpManager.getAllHistoryPages();
+                            mHistoryPages = pumpManager.getAllHistoryPages();
+                            final boolean savePages = false;
+                            if (savePages) {
+                                for (int i = 0; i < mHistoryPages.size(); i++) {
+                                    String filename = "PumpHistoryPage-" + i;
+                                    Log.w(TAG, "Saving history page to file " + filename);
+                                    FileOutputStream outputStream;
+                                    try {
+                                        outputStream = openFileOutput(filename, 0);
+                                        outputStream.write(mHistoryPages.get(i).getRawData());
+                                        outputStream.close();
+                                    } catch (FileNotFoundException fnf) {
+                                        fnf.printStackTrace();
+                                    } catch (IOException ioe) {
+                                        ioe.printStackTrace();
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+
+                                }
+                            }
+
+                            Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC, 0, 0);
+                            // Create a bundle with the data
+                            Bundle bundle = new Bundle();
+                            bundle.putString(RT2Const.IPC.messageKey, RT2Const.IPC.MSG_PUMP_history);
+                            ArrayList<Bundle> packedPages = new ArrayList<>();
+                            for (Page page : mHistoryPages) {
+                                packedPages.add(page.pack());
+                            }
+                            bundle.putParcelableArrayList(RT2Const.IPC.MSG_PUMP_history_key, packedPages);
+
+                            // Set payload
+                            msg.setData(bundle);
+                            serviceConnection.sendMessage(msg);
+                            Log.d(TAG, "sendMessage: sent Full history report");
+                        } else if (RT2Const.IPC.MSG_PUMP_fetchSavedHistory.equals(action)) {
+                            FileInputStream inputStream;
+                            ArrayList<Page> storedHistoryPages = new ArrayList<>();
+                            for (int i = 0; i < 16; i++) {
+
+                                String filename = "PumpHistoryPage-" + i;
+                                try {
+                                    inputStream = openFileInput(filename);
+                                    byte[] buffer = new byte[1024];
+                                    int numRead = inputStream.read(buffer, 0, 1024);
+                                    if (numRead == 1024) {
+                                        Page p = new Page();
+                                        p.parseFrom(buffer, PumpModel.MM522);
+                                        storedHistoryPages.add(p);
+                                    } else {
+                                        Log.e(TAG, filename + " error: short file");
+                                    }
+                                } catch (FileNotFoundException fnf) {
+                                    Log.e(TAG, "Failed to open " + filename + " for reading.");
+                                } catch (IOException e) {
+                                    Log.e(TAG, "Failed to read " + filename);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                            mHistoryPages = storedHistoryPages;
+                            if (storedHistoryPages.isEmpty()) {
+                                Log.e(TAG, "No stored history pages loaded");
+                            } else {
+                                Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC, 0, 0);
+                                // Create a bundle with the data
+                                Bundle bundle = new Bundle();
+                                bundle.putString(RT2Const.IPC.messageKey, RT2Const.IPC.MSG_PUMP_history);
+                                ArrayList<Bundle> packedPages = new ArrayList<>();
+                                for (Page page : mHistoryPages) {
+                                    packedPages.add(page.pack());
+                                }
+                                bundle.putParcelableArrayList(RT2Const.IPC.MSG_PUMP_history_key, packedPages);
+
+                                // Set payload
+                                msg.setData(bundle);
+                                serviceConnection.sendMessage(msg);
+
+                            }
                         } else if (RT2Const.IPC.MSG_PUMP_useThisAddress.equals(action)) {
                             Bundle bundle = intent.getBundleExtra(RT2Const.IPC.bundleKey);
                             String idString = bundle.getString("pumpID");
@@ -185,6 +274,7 @@ public class RoundtripService extends Service {
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_tunePump);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_fetchHistory);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_useThisAddress);
+        intentFilter.addAction(RT2Const.IPC.MSG_PUMP_fetchSavedHistory);
 
         LocalBroadcastManager.getInstance(mContext).registerReceiver(mBroadcastReceiver, intentFilter);
 

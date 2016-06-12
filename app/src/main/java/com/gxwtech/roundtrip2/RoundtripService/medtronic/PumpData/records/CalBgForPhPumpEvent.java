@@ -1,5 +1,9 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
+import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 public class CalBgForPhPumpEvent extends TimeStampedRecord {
@@ -13,7 +17,19 @@ public class CalBgForPhPumpEvent extends TimeStampedRecord {
             return false;
         }
         amount = ((asUINT8(data[6]) & 0x80) << 1) + asUINT8(data[1]);
-        addValue("amount",amount);
         return true;
     }
+
+    @Override
+    public boolean readFromBundle(Bundle in) {
+        amount = in.getInt("amount",0);
+        return super.readFromBundle(in);
+    }
+
+    @Override
+    public void writeToBundle(Bundle in) {
+        super.writeToBundle(in);
+        in.putInt("amount",amount);
+    }
+
 }

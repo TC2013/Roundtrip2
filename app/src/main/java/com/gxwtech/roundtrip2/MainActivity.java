@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
@@ -15,11 +16,15 @@ import android.widget.TextView;
 
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
 
+import java.util.ArrayList;
+
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int REQUEST_ENABLE_BT = 2177; // just something unique.
     private RoundtripServiceClientConnection roundtripServiceClientConnection;
     private BroadcastReceiver mBroadcastReceiver;
+
+    Bundle storeForHistoryViewer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +61,17 @@ public class MainActivity extends AppCompatActivity {
                             Bundle bundle = receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey);
                             String modelString = bundle.getString("model", "(unknown)");
                             setPumpStatusMessage(modelString);
+                        } else if (RT2Const.IPC.MSG_PUMP_history.equals(action)) {
+                            Intent launchHistoryViewIntent = new Intent(context,HistoryPageListActivity.class);
+                            storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
+                            startActivity(new Intent(context,HistoryPageListActivity.class));
+                            // wait for history viwere to announce "ready"
+                        } else if (RT2Const.local.INTENT_historyPageViewerReady.equals(action)) {
+                            Intent sendHistoryIntent = new Intent(RT2Const.local.INTENT_historyPageBundleIncoming);
+                            sendHistoryIntent.putExtra(RT2Const.IPC.MSG_PUMP_history_key,storeForHistoryViewer);
+                            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(sendHistoryIntent);
+                        } else {
+                            Log.e(TAG,"Unrecognized intent action: " + action);
                         }
                     }
                 }
@@ -69,6 +85,8 @@ public class MainActivity extends AppCompatActivity {
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_pumpFound);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_pumpLost);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_reportedPumpModel);
+        intentFilter.addAction(RT2Const.IPC.MSG_PUMP_history);
+        intentFilter.addAction(RT2Const.local.INTENT_historyPageViewerReady);
 
         LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, intentFilter);
 
@@ -176,6 +194,10 @@ public class MainActivity extends AppCompatActivity {
 
     public void onFetchHistoryButtonClicked(View view) {
         sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchHistory);
+    }
+
+    public void onFetchSavedHistoryButtonClicked(View view) {
+        sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchSavedHistory);
     }
 
 }

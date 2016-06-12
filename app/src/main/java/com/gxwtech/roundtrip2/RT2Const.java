@@ -46,12 +46,19 @@ public class RT2Const {
         public static final String MSG_PUMP_tunePump = Prefix + "MSG_PUMP_tunePump";
         public static final String MSG_PUMP_fetchHistory = Prefix + "MSG_PUMP_fetchHistory";
 
+        public static final String MSG_PUMP_history = Prefix + "MSG_PUMP_history";
+        public static final String MSG_PUMP_history_key = Prefix + "MSG_PUMP_history_key";
+        public static final String MSG_PUMP_fetchSavedHistory = Prefix + "MSG_PUMP_fetchSavedHistory";
+
 
     }
     public class local {
         // These are local to the GUI activities
         public static final String Prefix = RT2Prefix + "local.";
         public static final String INTENT_serviceConnected = Prefix + "INTENT_serviceConnected";
+
+        public static final String INTENT_historyPageViewerReady = Prefix + "I'm ready, hit me up";
+        public static final String INTENT_historyPageBundleIncoming = Prefix + "Here's the kitchen sink";
     }
 
     public class serviceLocal {

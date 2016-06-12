@@ -1,5 +1,8 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
+import android.os.Bundle;
+import android.os.Parcel;
+
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpTimeStamp;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
@@ -31,7 +34,7 @@ abstract public class TimeStampedRecord extends Record {
             return false;
         }
         collectTimeStamp(data,fiveByteDateOffset);
-        addValue("timestamp",getTimestamp());
+
         return true;
     }
 
@@ -39,4 +42,17 @@ abstract public class TimeStampedRecord extends Record {
         timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data,offset));
     }
 
+    @Override
+    public boolean readFromBundle(Bundle in) {
+        String timestampString = in.getString("timestamp");
+        timestamp = new PumpTimeStamp(timestampString);
+        return super.readFromBundle(in);
+    }
+
+    @Override
+    public void writeToBundle(Bundle in) {
+        super.writeToBundle(in);
+        in.putString("timestamp",timestamp.toString());
+
+    }
 }

@@ -1,6 +1,10 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
+import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 public class PumpAlarmPumpEvent extends TimeStampedRecord {
@@ -13,8 +17,19 @@ public class PumpAlarmPumpEvent extends TimeStampedRecord {
             return false;
         }
         rawtype = asUINT8(data[1]);
-        addValue("rawtype",rawtype);
         return true;
+    }
+
+    @Override
+    public boolean readFromBundle(Bundle in) {
+        rawtype = in.getInt("rawtype",0);
+        return super.readFromBundle(in);
+    }
+
+    @Override
+    public void writeToBundle(Bundle in) {
+        in.putInt("rawtype",rawtype);
+        super.writeToBundle(in);
     }
 
 }

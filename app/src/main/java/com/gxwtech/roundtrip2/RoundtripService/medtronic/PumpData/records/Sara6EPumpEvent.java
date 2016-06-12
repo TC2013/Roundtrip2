@@ -1,5 +1,7 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
+import android.os.Parcelable;
+
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpTimeStamp;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
@@ -17,7 +19,6 @@ public class Sara6EPumpEvent extends TimeStampedRecord {
             return false;
         }
         timestamp = new PumpTimeStamp(TimeFormat.parse2ByteDate(data,1));
-        addValue("timestamp",timestamp);
         return true;
     }
 

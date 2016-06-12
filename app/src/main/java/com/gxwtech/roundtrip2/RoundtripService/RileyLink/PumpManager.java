@@ -25,6 +25,7 @@ import com.gxwtech.roundtrip2.util.StringUtil;
 import org.joda.time.Instant;
 import org.joda.time.LocalDateTime;
 
+import java.io.File;
 import java.util.ArrayList;
 
 
@@ -146,7 +147,17 @@ public class PumpManager {
         PumpMessage response = sendAndListen(msg);
         Log.i(TAG,"getPumpModel response: " + ByteUtil.shortHexString(response.getContents()));
         byte[] contents = response.getContents();
-        PumpModel rval = PumpModel.fromString(StringUtil.fromBytes(ByteUtil.substring(contents,3,3)));
+        PumpModel rval = PumpModel.UNSET;
+        if (contents != null) {
+            if (contents.length >= 7) {
+                rval = PumpModel.fromString(StringUtil.fromBytes(ByteUtil.substring(contents,3,3)));
+            } else {
+                Log.w(TAG,"getPumpModel: Cannot return pump model number: data is too short.");
+            }
+        } else {
+            Log.w(TAG,"getPumpModel: Cannot return pump model number: null response");
+        }
+
         return rval;
     }
 

@@ -1,6 +1,8 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
+import android.os.Parcelable;
+
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 public class Model522ResultTotalsPumpEvent extends TimeStampedRecord {

@@ -5,11 +5,14 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData;
  *
  * This class was taken from medtronic-android-uploader.
  * This class was written such that the constructors did all the work, which resulted
- * in annoyances such as exceptions during constructors.  I've partially re-written it
- * to do the work in sane fashion.
+ * in annoyances such as exceptions during constructors.
+ *
+ * TODO: This class needs to be revisited and probably rewritten. (2016-06-12)
  *
  */
 
+import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.Log;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.BolusWizardBolusEstimatePumpEvent;
@@ -18,6 +21,7 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.Record
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.TempBasalDurationPumpEvent;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.TempBasalRatePumpEvent;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
+import com.gxwtech.roundtrip2.util.ByteUtil;
 import com.gxwtech.roundtrip2.util.CRC;
 import com.gxwtech.roundtrip2.util.HexDump;
 
@@ -29,7 +33,7 @@ import java.util.List;
 
 public class Page {
     private final static String TAG = "Page";
-    private static final boolean DEBUG_PAGE = true;
+    private static final boolean DEBUG_PAGE = false;
 
     private byte[] crc;
     private byte[] data;
@@ -39,6 +43,16 @@ public class Page {
     public Page() {
         this.model = PumpModel.UNSET;
         mRecordList = new ArrayList<>();
+    }
+
+    public byte[] getRawData() {
+        if (data == null) {
+            return crc;
+        }
+        if (crc == null) {
+            return data;
+        }
+        return ByteUtil.concat(data,crc);
     }
 
     public boolean parseFrom(byte[] rawPage, PumpModel model) {
@@ -112,7 +126,7 @@ public class Page {
                 record = attemptParseRecord(data,dataIndex);
             }
             if (record != null) {
-                Log.i(TAG,"parseFrom: found event "+record.getClass().getSimpleName());
+                Log.v(TAG,"parseFrom: found event "+record.getClass().getSimpleName());
                 // found something.  Is it something we trust or care about?
                 if (record.getRecordOp() == RecordTypeEnum.RECORD_TYPE_BolusWizardBolusEstimate.opcode()) {
                     BolusWizardBolusEstimatePumpEvent bw = (BolusWizardBolusEstimatePumpEvent)record;
@@ -166,7 +180,7 @@ public class Page {
             Log.i(TAG, String.format("Number of records: %d", mRecordList.size()));
             int index = 1;
             for (Record r : mRecordList) {
-                Log.i(TAG, String.format("Record #%d: %s", index,r.getRecordTypeName()));
+                Log.v(TAG, String.format("Record #%d: %s", index,r.getRecordTypeName()));
                 index += 1;
             }
         }
@@ -188,7 +202,7 @@ public class Page {
         }
         //Log.d(TAG,String.format("checking for handler for record type 0x%02X at index %d",data[offsetStart],offsetStart));
         RecordTypeEnum en = RecordTypeEnum.fromByte(data[offsetStart]);
-        T record = en.getRecordClass();
+        T record = en.getRecordClassInstance();
         if (record != null) {
             // have to do this to set the record's opCode
             byte[] tmpData = new byte[data.length];
@@ -260,5 +274,47 @@ public class Page {
 
         }
     }
+
+    /*
+    *
+    * For IPC serialization
+    *
+     */
+
+    /*
+    private byte[] crc;
+    private byte[] data;
+    protected PumpModel model;
+    public List<Record> mRecordList;
+    */
+
+    public Bundle pack() {
+        Bundle bundle = new Bundle();
+        bundle.putByteArray("crc",crc);
+        bundle.putByteArray("data",data);
+        bundle.putString("model",PumpModel.toString(model));
+        ArrayList<Bundle> records = new ArrayList<>();
+        for (int i=0; i<mRecordList.size(); i++) {
+            records.add(mRecordList.get(i).dictionaryRepresentation());
+        }
+        bundle.putParcelableArrayList("mRecordList",records);
+        return bundle;
+    }
+
+    public void unpack(Bundle in) {
+        crc = in.getByteArray("crc");
+        data = in.getByteArray("data");
+        model = PumpModel.fromString(in.getString("model"));
+        ArrayList<Bundle> records = in.getParcelableArrayList("mRecordList");
+        mRecordList = new ArrayList<>();
+        if (records != null) {
+            for (int i=0; i<records.size(); i++) {
+                Record r = RecordTypeEnum.getRecordClassInstance(records.get(i));
+                r.readFromBundle(records.get(i));
+                mRecordList.add(r);
+            }
+        }
+    }
+
 
 }

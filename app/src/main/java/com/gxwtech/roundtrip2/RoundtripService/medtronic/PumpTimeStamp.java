@@ -1,5 +1,7 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic;
 
+import android.os.Parcel;
+
 import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
 
@@ -10,6 +12,7 @@ import org.joda.time.LocalDateTime;
 public class PumpTimeStamp {
     private LocalDateTime localDateTime = new LocalDateTime();
     public PumpTimeStamp() {}
+    public PumpTimeStamp(String stringRepresentation) { localDateTime.parse(stringRepresentation); }
     public PumpTimeStamp(LocalDate localDate) {
         localDateTime = new LocalDateTime(localDate);
     }
@@ -23,4 +26,5 @@ public class PumpTimeStamp {
     public String toString() {
         return getLocalDateTime().toString();
     }
+
 }
