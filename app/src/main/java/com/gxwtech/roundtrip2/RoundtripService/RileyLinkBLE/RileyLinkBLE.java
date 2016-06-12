@@ -204,14 +204,7 @@ public class RileyLinkBLE {
                     if (gattDebugEnabled) {
                         Log.w(TAG, "onServicesDiscovered " + getGattStatusMessage(status));
                     }
-                    BLECommOperationResult result = setNotification_blocking(
-                            UUID.fromString(GattAttributes.SERVICE_RADIO),
-                            UUID.fromString(GattAttributes.CHARA_RADIO_RESPONSE_COUNT));
-                    if (result.resultCode != BLECommOperationResult.RESULT_SUCCESS) {
-                        Log.e(TAG, "Error setting response count notification");
-                    } else {
-                        mIsConnected = true;
-                    }
+                    mIsConnected = true;
                     Intent intent = new Intent(RT2Const.serviceLocal.BLE_services_discovered);
                     LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
                 } else {
@@ -236,6 +229,17 @@ public class RileyLinkBLE {
         } else {
             Log.e(TAG, "Cannot discover GATT Services.");
         }
+    }
+
+    public boolean enableNotifications() {
+        BLECommOperationResult result = setNotification_blocking(
+                UUID.fromString(GattAttributes.SERVICE_RADIO),
+                UUID.fromString(GattAttributes.CHARA_RADIO_RESPONSE_COUNT));
+        if (result.resultCode != BLECommOperationResult.RESULT_SUCCESS) {
+            Log.e(TAG, "Error setting response count notification");
+            return false;
+        }
+        return true;
     }
 
     public void findRileyLink(String RileyLinkAddress) {

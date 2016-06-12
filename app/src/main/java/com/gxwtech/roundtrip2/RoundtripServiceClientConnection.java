@@ -110,6 +110,7 @@ public class RoundtripServiceClientConnection {
         Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC, 0, 0);
         // Set payload
         msg.setData(bundle);
+        msg.replyTo = mMessenger;
         // Send the Message to the Service (in another process)
         try {
             mService.send(msg);

@@ -70,5 +70,8 @@ public class RT2Const {
         public static final String pumpIDKey = Prefix + "PumpIDKey";
         public static final String rileylinkAddressKey = Prefix + "rileylinkAddressKey";
 
+        // The the key to identify the hashCode() of the msg.replyTo, when the bundle is moved to an intent.
+        public static final String IPCReplyTo_hashCodeKey = Prefix + "IPCReplyTo_hashCodeKey";
+
     }
 }
