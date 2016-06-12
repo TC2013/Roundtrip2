@@ -36,6 +36,7 @@ public class UnabsorbedInsulin extends Record {
             int age = asUINT8(data[3 + (i*3)]) + (((asUINT8(data[4 + (i*3)])) & 0b110000) << 4);
             records.add(new UnabsorbedInsulinRecord(amount,age));
         }
+        addValue("data",records);
         return true;
     }
 }

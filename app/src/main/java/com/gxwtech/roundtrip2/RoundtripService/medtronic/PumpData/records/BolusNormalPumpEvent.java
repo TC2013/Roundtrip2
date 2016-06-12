@@ -46,7 +46,11 @@ public class BolusNormalPumpEvent extends TimeStampedRecord {
         }
 
         bolusType = (duration > 0) ? "square" : "normal";
-
+        addValue("programmedAmount",programmedAmount);
+        addValue("deliveredAmount",deliveredAmount);
+        addValue("duration",duration);
+        addValue("unabsorbedInsulinTotal",unabsorbedInsulinTotal);
+        addValue("bolusType",bolusType);
         return true;
     }
 

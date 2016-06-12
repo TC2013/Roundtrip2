@@ -21,6 +21,9 @@ public class BasalProfileStart extends TimeStampedRecord {
         profileIndex = asUINT8(data[1]);
         offset = asUINT8(data[7]) * 30 * 1000 * 60;
         rate = (double)(asUINT8(data[8])) / 40.0;
+        addValue("offset",offset);
+        addValue("rate",rate);
+        addValue("profileIndex",profileIndex);
         return true;
     }
 }

@@ -13,6 +13,7 @@ public class PumpAlarmPumpEvent extends TimeStampedRecord {
             return false;
         }
         rawtype = asUINT8(data[1]);
+        addValue("rawtype",rawtype);
         return true;
     }
 

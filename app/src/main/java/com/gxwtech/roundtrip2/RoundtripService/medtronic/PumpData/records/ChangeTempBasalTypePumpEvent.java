@@ -19,6 +19,7 @@ public class ChangeTempBasalTypePumpEvent extends TimeStampedRecord {
         } else {
             isPercent = false;
         }
+        addValue("isPercent",isPercent);
         return true;
     }
 }

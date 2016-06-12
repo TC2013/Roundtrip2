@@ -56,7 +56,6 @@ public class RFSpy {
         this.context = context;
         this.rileyLinkBle = rileyLinkBle;
         reader = new RFSpyReader(context, rileyLinkBle);
-        startReader();
     }
 
     // Call this after the RL services are discovered.

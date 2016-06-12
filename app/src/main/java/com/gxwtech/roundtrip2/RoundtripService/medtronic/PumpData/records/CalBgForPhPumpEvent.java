@@ -13,6 +13,7 @@ public class CalBgForPhPumpEvent extends TimeStampedRecord {
             return false;
         }
         amount = ((asUINT8(data[6]) & 0x80) << 1) + asUINT8(data[1]);
+        addValue("amount",amount);
         return true;
     }
 }

@@ -19,6 +19,9 @@ public class PrimePumpEvent extends TimeStampedRecord {
         amount = (double)(asUINT8(data[4])<<2) / 40.0;
         programmedAmount = (double)(asUINT8(data[2])<<2) / 40.0;
         primeType = programmedAmount == 0 ? "manual" : "fixed";
+        addValue("amount", amount);
+        addValue("programmedAmount", programmedAmount);
+        addValue("primeType",primeType);
         return true;
     }
 }

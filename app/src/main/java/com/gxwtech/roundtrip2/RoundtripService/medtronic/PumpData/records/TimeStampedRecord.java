@@ -31,6 +31,7 @@ abstract public class TimeStampedRecord extends Record {
             return false;
         }
         collectTimeStamp(data,fiveByteDateOffset);
+        addValue("timestamp",getTimestamp());
         return true;
     }
 

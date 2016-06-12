@@ -49,6 +49,8 @@ public class RileyLinkBLE {
 
     private Runnable radioResponseCountNotified;
 
+    private boolean mIsConnected = false;
+
     public RileyLinkBLE(final Context context) {
         this.context = context;
         this.bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
@@ -183,6 +185,7 @@ public class RileyLinkBLE {
 
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     final List<BluetoothGattService> services = gatt.getServices();
+                    // TODO: in here, we need to determine if this Bluetooth device is a RileyLink with appropriate software (subg_rfspy) and set mIsConnected if the GATT is ok.
                     for (BluetoothGattService service : services) {
                         final List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
 
@@ -206,6 +209,8 @@ public class RileyLinkBLE {
                             UUID.fromString(GattAttributes.CHARA_RADIO_RESPONSE_COUNT));
                     if (result.resultCode != BLECommOperationResult.RESULT_SUCCESS) {
                         Log.e(TAG, "Error setting response count notification");
+                    } else {
+                        mIsConnected = true;
                     }
                     Intent intent = new Intent(RT2Const.serviceLocal.BLE_services_discovered);
                     LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
@@ -218,6 +223,10 @@ public class RileyLinkBLE {
 
     public void registerRadioResponseCountNotification(Runnable notifier) {
         radioResponseCountNotified = notifier;
+    }
+
+    public boolean isConnected() {
+        return mIsConnected;
     }
 
     public void discoverServices() {
@@ -244,6 +253,7 @@ public class RileyLinkBLE {
     }
 
     public void disconnect() {
+        mIsConnected = false;
         Log.w(TAG, "Closing GATT connection");
         // Close old conenction
         if (bluetoothConnectionGatt != null) {

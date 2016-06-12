@@ -16,6 +16,7 @@ public class TempBasalDurationPumpEvent extends TimeStampedRecord {
             return false;
         }
         durationMinutes = asUINT8(data[1]) * 30;
+        addValue("durationMinutes",durationMinutes);
         return true;
     }
 

@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -26,6 +27,11 @@ import com.gxwtech.roundtrip2.RT2Const;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLink.PumpManager;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RileyLinkBLE;
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
+import com.gxwtech.roundtrip2.util.ByteUtil;
+
+import java.util.ArrayList;
 
 /**
  * RoundtripService is intended to stay running when the gui-app is closed.
@@ -35,6 +41,8 @@ public class RoundtripService extends Service {
     private static final String WAKELOCKNAME = "com.gxwtech.roundtrip2.RoundtripServiceWakeLock";
     private static volatile PowerManager.WakeLock lockStatic = null;
 
+    private boolean needBluetoothPermission = true;
+
     private Messenger mMessenger;
     private boolean mBound = false;
     private Handler mMessageHandler;
@@ -43,8 +51,14 @@ public class RoundtripService extends Service {
     private BluetoothManager mBluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
 
+    private ArrayList<Messenger> mClients = new ArrayList<>();
+
     // saved settings
 
+    private SharedPreferences sharedPref;
+    private String pumpIDString;
+    private byte[] pumpIDBytes;
+    private String mRileylinkAddress;
 
     // Our hardware/software connection
     private RileyLinkBLE rileyLinkBLE; // android-bluetooth management
@@ -62,6 +76,25 @@ public class RoundtripService extends Service {
         mContext = getApplicationContext();
         mMessageHandler = new MessageHandler();
         mMessenger = new Messenger(mMessageHandler);
+
+        sharedPref = mContext.getSharedPreferences(RT2Const.serviceLocal.sharedPreferencesKey, Context.MODE_PRIVATE);
+
+        // get most recently used pumpID
+        pumpIDString = sharedPref.getString(RT2Const.serviceLocal.pumpIDKey,"000000");
+        pumpIDBytes = ByteUtil.fromHexString(pumpIDString);
+        if (pumpIDBytes.length != 3) {
+            Log.e(TAG,"Invalid pump ID? " + ByteUtil.shortHexString(pumpIDBytes));
+            pumpIDBytes = new byte[] {0,0,0};
+            pumpIDString = "000000";
+        }
+        if (pumpIDString.equals("000000")) {
+            Log.e(TAG,"Using pump ID "+pumpIDString);
+        } else {
+            Log.i(TAG,"Using pump ID "+pumpIDString);
+        }
+
+        // get most recently used RileyLink address
+        mRileylinkAddress = sharedPref.getString(RT2Const.serviceLocal.rileylinkAddressKey,"");
 
         mBroadcastReceiver = new BroadcastReceiver() {
             @Override
@@ -81,12 +114,22 @@ public class RoundtripService extends Service {
                             // If this is successful,
                             // We will get a broadcast of RT2Const.serviceLocal.BLE_services_discovered
                         } else if (action.equals(RT2Const.serviceLocal.BLE_services_discovered)) {
-                            Log.i(TAG, "Announcing RileyLink open For business");
-                            sendBLEMessage(RT2Const.IPC.MSG_BLE_RileyLinkReady);
                             rfspy = new RFSpy(context, rileyLinkBLE);
-                            pumpManager = new PumpManager(rfspy, new byte[]{0x51, (byte) 0x81, 0x63});
-                            pumpManager.tunePump();
-
+                            rfspy.startReader(); // call startReader from outside?
+                            Log.i(TAG, "Announcing RileyLink open For business");
+                            sendMessage(RT2Const.IPC.MSG_BLE_RileyLinkReady);
+                            pumpManager = new PumpManager(rfspy, pumpIDBytes);
+                            PumpModel reportedPumpModel = pumpManager.getPumpModel();
+                            if (!reportedPumpModel.equals(PumpModel.UNSET)) {
+                                sendMessage(RT2Const.IPC.MSG_PUMP_pumpFound);
+                            } else {
+                                sendMessage(RT2Const.IPC.MSG_PUMP_pumpLost);
+                            }
+                        } else if (action.equals(RT2Const.serviceLocal.ipcBound)) {
+                            // If we still need permission for bluetooth, ask now.
+                            if (needBluetoothPermission) {
+                                sendBLERequestForAccess();
+                            }
                         } else {
                             Log.e(TAG,"Unhandled broadcast: action="+action);
                         }
@@ -98,10 +141,16 @@ public class RoundtripService extends Service {
         intentFilter.addAction(RT2Const.serviceLocal.bluetooth_connected);
         intentFilter.addAction(RT2Const.serviceLocal.bluetooth_disconnected);
         intentFilter.addAction(RT2Const.serviceLocal.BLE_services_discovered);
+        intentFilter.addAction(RT2Const.serviceLocal.ipcBound);
 
         LocalBroadcastManager.getInstance(mContext).registerReceiver(mBroadcastReceiver, intentFilter);
+
+        Log.d(TAG, "onCreate(): It's ALIVE!");
+
         rileyLinkBLE = new RileyLinkBLE(this);
-        Log.d(TAG, "onCreate(): I'm alive");
+        if (mRileylinkAddress.length() > 0) {
+            rileyLinkBLE.findRileyLink(mRileylinkAddress);
+        }
     }
 
     class MessageHandler extends Handler {
@@ -111,8 +160,23 @@ public class RoundtripService extends Service {
             Bundle bundle = msg.getData();
             switch(msg.what) {
                 // This just helps sub-divide the message processing
-                case RT2Const.IPC.MSG_BLE:
-                    handleBLEMessage(msg);
+                case RT2Const.IPC.MSG_registerClient:
+                    // send a reply, to let them know we're listening.
+                    Message myReply = Message.obtain(null, RT2Const.IPC.MSG_clientRegistered,0,0);
+                    try {
+                        msg.replyTo.send(myReply);
+                        mClients.add(msg.replyTo);
+                        Log.d(TAG,"handleMessage: Registered client");
+                    } catch (RemoteException e) {
+                        // I guess they aren't registered after all...
+                        Log.e(TAG,"handleMessage: failed to send acknowledgement of registration");
+                    }
+
+                    break;
+                case RT2Const.IPC.MSG_IPC:
+                    if (!handleIPCMessage(msg)) {
+                        super.handleMessage(msg);
+                    }
                     break;
                 /*
                 case RT2Const.MSG_ping:
@@ -132,6 +196,7 @@ public class RoundtripService extends Service {
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "onBind");
         mBound = true;
+        LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(RT2Const.serviceLocal.ipcBound));
         return mMessenger.getBinder();
     }
 
@@ -185,9 +250,13 @@ public class RoundtripService extends Service {
         // Ensures Bluetooth is available on the device and it is enabled. If not,
         // displays a dialog requesting user permission to enable Bluetooth.
         if ((mBluetoothAdapter==null) || (!mBluetoothAdapter.isEnabled())) {
-            Log.d(TAG,"BluetoothInit: requesting Bluetooth access");
-            sendBLERequestForAccess();
+            if (mBound == false) {
+                // can't ask for permission yet.
+            } else {
+                sendBLERequestForAccess();
+            }
         } else {
+            needBluetoothPermission = false;
             initializeLeAdapter();
         }
     }
@@ -205,14 +274,15 @@ public class RoundtripService extends Service {
         return true;
     }
 
-    private void handleBLEMessage(Message m) {
+    private boolean handleIPCMessage(Message m) {
         Bundle bundle = m.getData();
-        String ble_message = (String)bundle.get("ble_message");
-        if (ble_message == null) {
-            Log.e(TAG,"handleBLEMessage: missing ble_message value");
-            return;
+        String messageType = (String) bundle.getString(RT2Const.IPC.messageKey);
+        if (messageType == null) {
+            Log.e(TAG, "handleIPCMessage: missing messageType value");
+            return false;
         }
-        if (RT2Const.IPC.MSG_BLE_accessGranted.equals(ble_message)) {
+        Log.d(TAG,"handleIPCMessage: " + messageType);
+        if (RT2Const.IPC.MSG_BLE_accessGranted.equals(messageType)) {
             //initializeLeAdapter();
             //BluetoothInit();
             /*
@@ -221,14 +291,16 @@ public class RoundtripService extends Service {
                 mDevice = (BluetoothClass.Device)intent.getSerializableExtra(BT_DEVICE);
             }
             */
-        } else if (RT2Const.IPC.MSG_BLE_accessDenied.equals(ble_message)) {
-            stopSelf();
-        } else if (RT2Const.IPC.MSG_BLE_useThisDevice.equals(ble_message)) {
-            String deviceAddress = bundle.getString("address");
+        } else if (RT2Const.IPC.MSG_BLE_accessDenied.equals(messageType)) {
+            stopSelf(); // This will stop the service.
+        } else if (RT2Const.IPC.MSG_BLE_useThisDevice.equals(messageType)) {
+            String deviceAddress = bundle.getString(RT2Const.IPC.MSG_BLE_useThisDevice_addressKey);
             if (deviceAddress == null) {
                 Toast.makeText(mContext, "Null RL address passed", Toast.LENGTH_SHORT).show();
+                Log.e(TAG,"handleIPCMessage: null RL address passed");
             } else {
                 Toast.makeText(mContext, "Using RL " + deviceAddress, Toast.LENGTH_SHORT).show();
+                Log.d(TAG,"handleIPCMessage: Using RL " + deviceAddress);
                 if (mBluetoothAdapter == null) {
                     mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
                 }
@@ -237,48 +309,82 @@ public class RoundtripService extends Service {
                         rileyLinkBLE.findRileyLink(deviceAddress);
                         // If successful, we will get a broadcast from RileyLinkBLE: RT2Const.serviceLocal.bluetooth_connected
                     } else {
-                        Log.e(TAG,"Bluetooth is not enabled.");
+                        Log.e(TAG, "Bluetooth is not enabled.");
                     }
                 } else {
-                    Log.e(TAG,"Failed to get adapter");
+                    Log.e(TAG, "Failed to get adapter");
                 }
 
             }
-        }
-
-    }
-
-    private boolean sendMessage(Bundle bundle) {
-        if (!mBound) {
-            Log.e(TAG,"sendMessage: not bound -- cannot send");
+        } else if (messageType.equals(RT2Const.IPC.MSG_PUMP_tunePump)) {
+            pumpManager.tunePump();
+        } else if (messageType.equals(RT2Const.IPC.MSG_PUMP_fetchHistory)) {
+            ArrayList<Page> pages = pumpManager.getAllHistoryPages();
+        } else if (RT2Const.IPC.MSG_PUMP_useThisAddress.equals(messageType)) {
+            String idString = bundle.getString("pumpID");
+            if ((idString != null) && (idString.length()==6)) {
+                setPumpIDString(idString);
+            }
+        } else {
+            Log.e(TAG,"handleIPCMessage: unhandled message: " + messageType);
             return false;
-        }
-
-        // Create a Message
-        Message msg = Message.obtain(null, RT2Const.IPC.MSG_BLE, 0, 0);
-
-        // Set payload
-        msg.setData(bundle);
-
-        // Send the Message to the Service (in another process)
-        try {
-            mMessenger.send(msg);
-        } catch (RemoteException e) {
-            e.printStackTrace();
         }
         return true;
     }
 
-    private void sendBLEMessage(String bleMsgType) {
+    private void setPumpIDString(String idString) {
+        if (idString.length() != 6) {
+            Log.e(TAG,"setPumpIDString: invalid pump id string: " + idString);
+        }
+        pumpIDString = idString;
+        pumpIDBytes = ByteUtil.fromHexString(pumpIDString);
+        SharedPreferences prefs = mContext.getSharedPreferences(RT2Const.serviceLocal.sharedPreferencesKey, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString(RT2Const.serviceLocal.pumpIDKey,pumpIDString);
+        editor.apply();
+        Log.i(TAG,"setPumpIDString: saved pumpID "+pumpIDString);
+    }
+
+    private boolean sendMessage(Message msg) {
+        if (!mBound) {
+            Log.e(TAG,"sendMessage: not bound -- cannot send");
+            return false;
+        }
+        if (mClients.isEmpty()) {
+            Log.e(TAG,"sendMessage: cannot send, no clients!");
+        } else {
+            try {
+                for (Messenger client : mClients) {
+                    client.send(msg);
+                }
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
+        return true;
+    }
+
+    private void sendMessage(String messageType) {
+        if (!mBound) {
+            Log.e(TAG,"sendMessage("+messageType+") cannot send message -- not yet bound");
+        }
+        Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC,0,0);
         // Create a bundle with the data
         Bundle bundle = new Bundle();
-        bundle.putString("ble_message", bleMsgType);
-        sendMessage(bundle);
-        Log.d(TAG,"sendBLEMessage: sent "+bleMsgType);
+        bundle.putString(RT2Const.IPC.messageKey, messageType);
+
+        // Set payload
+        msg.setData(bundle);
+        sendMessage(msg);
+        Log.d(TAG,"sendMessage: sent "+messageType);
     }
 
     private void sendBLERequestForAccess() {
-        sendBLEMessage(RT2Const.IPC.MSG_BLE_requestAccess);
+        sendMessage(RT2Const.IPC.MSG_BLE_requestAccess);
+    }
+
+    private void reportPumpFound() {
+        sendMessage(RT2Const.IPC.MSG_PUMP_pumpFound);
     }
 }
 

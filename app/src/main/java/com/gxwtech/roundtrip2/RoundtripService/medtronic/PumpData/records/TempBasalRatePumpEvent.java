@@ -24,6 +24,8 @@ public class TempBasalRatePumpEvent extends TimeStampedRecord {
             mIsPercent = true;
             basalRate = asUINT8(data[1]);
         }
+        addValue("isPercent",mIsPercent);
+        addValue("basalRate",basalRate);
         return true;
     }
 

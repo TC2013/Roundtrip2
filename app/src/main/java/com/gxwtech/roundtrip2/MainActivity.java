@@ -1,103 +1,88 @@
 package com.gxwtech.roundtrip2;
 
 import android.bluetooth.BluetoothAdapter;
-import android.content.ComponentName;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.IBinder;
-import android.os.Message;
-import android.os.Messenger;
-import android.os.RemoteException;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.widget.TextView;
 
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int REQUEST_ENABLE_BT = 2177; // just something unique.
-    private Messenger mMessenger;
-    private ServiceConnection mServiceConnection;
-
+    private RoundtripServiceClientConnection roundtripServiceClientConnection;
+    private BroadcastReceiver mBroadcastReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-                /* start the RoundtripService */
+        roundtripServiceClientConnection = new RoundtripServiceClientConnection(this);
+
+        mBroadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent receivedIntent) {
+                if (receivedIntent == null) {
+                    Log.e(TAG,"onReceive: received null intent");
+                } else {
+                    String action = receivedIntent.getAction();
+                    if (action == null) {
+                        Log.e(TAG, "onReceive: null action");
+                    } else {
+                        Intent intent;
+
+                        if (RT2Const.local.INTENT_serviceConnected.equals(action)) {
+                            sendPUMP_useThisDevice("518163");
+                            sendBLEuseThisDevice("00:07:80:2D:9E:F4"); // for automated testing
+                        } else if (RT2Const.IPC.MSG_BLE_RileyLinkReady.equals(action)) {
+                            setRileylinkStatusMessage("OK");
+                        } else if (RT2Const.IPC.MSG_BLE_requestAccess.equals(action)) {
+                            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+                        } else if (RT2Const.IPC.MSG_PUMP_pumpFound.equals(action)) {
+                            setPumpStatusMessage("OK");
+                        } else if (RT2Const.IPC.MSG_PUMP_pumpLost.equals(action)) {
+                            setPumpStatusMessage("Lost");
+                        } else if (RT2Const.IPC.MSG_PUMP_reportedPumpModel.equals(action)) {
+                            Bundle bundle = receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey);
+                            String modelString = bundle.getString("model", "(unknown)");
+                            setPumpStatusMessage(modelString);
+                        }
+                    }
+                }
+            }
+        };
+
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(RT2Const.local.INTENT_serviceConnected);
+        intentFilter.addAction(RT2Const.IPC.MSG_BLE_RileyLinkReady);
+        intentFilter.addAction(RT2Const.IPC.MSG_BLE_requestAccess);
+        intentFilter.addAction(RT2Const.IPC.MSG_PUMP_pumpFound);
+        intentFilter.addAction(RT2Const.IPC.MSG_PUMP_pumpLost);
+        intentFilter.addAction(RT2Const.IPC.MSG_PUMP_reportedPumpModel);
+
+        LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, intentFilter);
+
+
+        /* start the RoundtripService */
         /* using startService() will keep the service running until it is explicitly stopped
          * with stopService() or by RoundtripService calling stopSelf().
          * Note that calling startService repeatedly has no ill effects on RoundtripService
          */
-        mServiceConnection = new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-                Log.d(TAG,"onServiceConnected");
-
-                // Create the Messenger object
-                mMessenger = new Messenger(iBinder);
-
-                // Create a Message
-                // Note the usage of MSG_SAY_HELLO as the what value
-                /*
-                Message msg = Message.obtain(null, RT2Const.MSG_ping, 0, 0);
-
-                // Create a bundle with the data
-                Bundle bundle = new Bundle();
-                bundle.putString("key_hello", "world");
-
-                // Set the bundle data to the Message
-                msg.setData(bundle);
-
-                // Send the Message to the Service (in another process)
-                try {
-                    mMessenger.send(msg);
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                }
-                */
-                sendBLEuseThisDevice("00:07:80:2D:9E:F4"); // for automated testing
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName componentName) {
-
-            }
-        };
-
         // explicitly call startService to keep it running even when the GUI goes away.
         Intent bindIntent = new Intent(this,RoundtripService.class);
         startService(bindIntent);
         // bind to the service for ease of message passing.
-        bindService(bindIntent,mServiceConnection, Context.BIND_AUTO_CREATE);
-
-    }
-
-    protected void startRoundtripService() {
-        Log.d(TAG,"Sending intent to start service");
-        startActivity(new Intent(this,RoundtripService.class));
-    }
-    /* for messages from RoundtripService */
-    private void handleBLEMessage(Message m) {
-        Bundle bundle = m.getData();
-        String ble_message = (String)bundle.get("ble_message");
-        if (ble_message == null) {
-            Log.e(TAG,"handleBLEMessage: missing ble_message value");
-            return;
-        }
-        if (RT2Const.IPC.MSG_BLE_requestAccess.equals(ble_message)) {
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-        } else if (RT2Const.IPC.MSG_BLE_RileyLinkReady.equals(ble_message)) {
-            Intent intent = new Intent(RT2Const.local.INTENT_RileyLinkReady);
-            LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
-        } else {
-            Log.e(TAG,"handleBLEMessage: failed to handle message "+ble_message);
-        }
+        doBindService();
     }
 
     @Override
@@ -116,44 +101,81 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
+    private boolean sendMessage(Bundle bundle) {
+        return roundtripServiceClientConnection.sendMessage(bundle);
+    }
 
     /* Functions for sending messages to RoundtripService */
 
-    private void sendMessage(Bundle bundle) {
-        // Create a Message
-        Message msg = Message.obtain(null, RT2Const.IPC.MSG_BLE, 0, 0);
-
-        // Set payload
-        msg.setData(bundle);
-
-        // Send the Message to the Service (in another process)
-        try {
-            mMessenger.send(msg);
-        } catch (RemoteException e) {
-            e.printStackTrace();
+    // send one-liner message to RoundtripService
+    private void sendIPCMessage(String ipcMsgType) {
+        // Create a bundle with the data
+        Bundle bundle = new Bundle();
+        bundle.putString(RT2Const.IPC.messageKey, ipcMsgType);
+        if (sendMessage(bundle)) {
+            Log.d(TAG,"sendIPCMessage: sent "+ipcMsgType);
+        } else {
+            Log.e(TAG,"sendIPCMessage: send failed");
         }
     }
 
-    private void sendBLEMessage(String bleMsgType) {
-        // Create a bundle with the data
-        Bundle bundle = new Bundle();
-        bundle.putString("ble_message", bleMsgType);
-        sendMessage(bundle);
-        Log.d(TAG,"sendBLEMessage: sent "+bleMsgType);
-    }
+    private void sendBLEaccessGranted() { sendIPCMessage(RT2Const.IPC.MSG_BLE_accessGranted); }
 
-    private void sendBLEaccessGranted() { sendBLEMessage(RT2Const.IPC.MSG_BLE_accessGranted); }
-
-    private void sendBLEaccessDenied() { sendBLEMessage(RT2Const.IPC.MSG_BLE_accessDenied); }
+    private void sendBLEaccessDenied() { sendIPCMessage(RT2Const.IPC.MSG_BLE_accessDenied); }
 
     private void sendBLEuseThisDevice(String address) {
         Bundle bundle = new Bundle();
-        bundle.putString("ble_message", RT2Const.IPC.MSG_BLE_useThisDevice);
-        bundle.putString("address",address);
+        bundle.putString(RT2Const.IPC.messageKey, RT2Const.IPC.MSG_BLE_useThisDevice);
+        bundle.putString(RT2Const.IPC.MSG_BLE_useThisDevice_addressKey,address);
         sendMessage(bundle);
-        Log.d(TAG,"sendBLEMessage: (use this address) "+address);
+        Log.d(TAG,"sendIPCMessage: (use this address) "+address);
     }
 
+
+    private void sendPUMP_useThisDevice(String pumpIDString) {
+        Bundle bundle = new Bundle();
+        bundle.putString(RT2Const.IPC.messageKey, RT2Const.IPC.MSG_PUMP_useThisAddress);
+        bundle.putString(RT2Const.IPC.MSG_PUMP_useThisAddress_pumpIDKey,pumpIDString);
+        sendMessage(bundle);
+        Log.d(TAG,"sendPUMP_useThisDevice: " + pumpIDString);
+    }
+
+    public void doBindService() {
+        bindService(new Intent(this,RoundtripService.class),
+                roundtripServiceClientConnection.getServiceConnection(),
+                Context.BIND_AUTO_CREATE);
+        Log.d(TAG,"doBindService: binding.");
+    }
+
+    public void doUnbindService() {
+        ServiceConnection conn = roundtripServiceClientConnection.getServiceConnection();
+        roundtripServiceClientConnection.unbind();
+        unbindService(conn);
+        Log.d(TAG,"doUnbindService: unbinding.");
+    }
+
+    /*
+    *
+    *  GUI element functions
+    *
+     */
+
+    void setRileylinkStatusMessage(String statusMessage) {
+        TextView field = (TextView)findViewById(R.id.textViewFieldRileyLink);
+        field.setText(statusMessage);
+    }
+
+    void setPumpStatusMessage(String statusMessage) {
+        TextView field = (TextView)findViewById(R.id.textViewFieldPump);
+        field.setText(statusMessage);
+    }
+
+    public void onTunePumpButtonClicked(View view) {
+        sendIPCMessage(RT2Const.IPC.MSG_PUMP_tunePump);
+    }
+
+    public void onFetchHistoryButtonClicked(View view) {
+        sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchHistory);
+    }
 
 }

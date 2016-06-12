@@ -17,6 +17,7 @@ public class Sara6EPumpEvent extends TimeStampedRecord {
             return false;
         }
         timestamp = new PumpTimeStamp(TimeFormat.parse2ByteDate(data,1));
+        addValue("timestamp",timestamp);
         return true;
     }
 

@@ -20,6 +20,7 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.Record
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpMessage;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.util.ByteUtil;
+import com.gxwtech.roundtrip2.util.StringUtil;
 
 import org.joda.time.Instant;
 import org.joda.time.LocalDateTime;
@@ -130,6 +131,150 @@ public class PumpManager {
         }
         return pages;
     }
+    public void getPumpRTC() {
+        wakeup(6);
+        PumpMessage getRTCMsg = makePumpMessage(new MessageType(MessageType.CMD_M_READ_RTC), new CarelinkShortMessageBody(new byte[]{0}));
+        Log.i(TAG,"getPumpRTC: " + ByteUtil.shortHexString(getRTCMsg.getTxData()));
+        RFSpyResponse response = rfspy.transmitThenReceive(new RadioPacket(getRTCMsg.getTxData()),2000);
+        Log.i(TAG,"getPumpRTC response: " + ByteUtil.shortHexString(response.getRadioResponse().getPayload()));
+    }
+
+    public PumpModel getPumpModel() {
+        wakeup(6);
+        PumpMessage msg = makePumpMessage(new MessageType(MessageType.GetPumpModel), new GetPumpModelCarelinkMessageBody());
+        Log.i(TAG,"getPumpModel: " + ByteUtil.shortHexString(msg.getTxData()));
+        PumpMessage response = sendAndListen(msg);
+        Log.i(TAG,"getPumpModel response: " + ByteUtil.shortHexString(response.getContents()));
+        byte[] contents = response.getContents();
+        PumpModel rval = PumpModel.fromString(StringUtil.fromBytes(ByteUtil.substring(contents,3,3)));
+        return rval;
+    }
+
+    public void tryoutPacket(byte[] pkt) {
+        sendAndListen(makePumpMessage(pkt));
+    }
+
+    public void hunt() {
+        tryoutPacket(new byte[] {MessageType.CMD_M_READ_PUMP_STATUS,0});
+        tryoutPacket(new byte[] {MessageType.CMD_M_READ_FIRMWARE_VER,0});
+        tryoutPacket(new byte[] {MessageType.CMD_M_READ_INSULIN_REMAINING,0});
+
+    }
+
+    // See ButtonPressCarelinkMessageBody
+    public void pressButton(int which) {
+        wakeup(6);
+        PumpMessage pressButtonMessage = makePumpMessage(new MessageType(MessageType.CMD_M_KEYPAD_PUSH),new ButtonPressCarelinkMessageBody(which));
+        PumpMessage resp = sendAndListen(pressButtonMessage);
+        if (resp.messageType.mtype != MessageType.PumpAck) {
+            Log.e(TAG,"Pump did not ack button press.");
+        }
+    }
+
+    public void wakeup(int duration_minutes) {
+        if (SystemClock.elapsedRealtime() > pumpAwakeUntil) {
+            Log.i(TAG,"Waking pump...");
+            PumpMessage msg = makePumpMessage(new MessageType(MessageType.PowerOn), new CarelinkShortMessageBody(new byte[]{(byte) duration_minutes}));
+            RFSpyResponse resp = rfspy.transmitThenReceive(new RadioPacket(msg.getTxData()), (byte) 0, (byte) 200, (byte) 0, (byte) 0, 15000, (byte) 0);
+            Log.i(TAG, "wakeup: raw response is " + ByteUtil.shortHexString(resp.getRaw()));
+            pumpAwakeUntil = SystemClock.elapsedRealtime() + duration_minutes * 60 * 1000;
+        }
+    }
+
+    public void tunePump() {
+        scanForPump(scanFrequencies);
+    }
+
+    private void scanForPump(double[] frequencies) {
+        Log.i(TAG,"Scanning for pump ID " + pumpID);
+        wakeup(1);
+        FrequencyScanResults results = new FrequencyScanResults();
+
+        for (int i=0; i<frequencies.length; i++) {
+            int tries = 3;
+            FrequencyTrial trial = new FrequencyTrial();
+            trial.frequencyMHz = frequencies[i];
+            rfspy.setBaseFrequency(frequencies[i]);
+            int sumRSSI = 0;
+            for (int j = 0; j<tries; j++) {
+                PumpMessage msg = makePumpMessage(new MessageType(MessageType.GetPumpModel), new GetPumpModelCarelinkMessageBody());
+                RFSpyResponse resp = rfspy.transmitThenReceive(new RadioPacket(msg.getTxData()),(byte) 0, (byte) 0, (byte) 0, (byte) 0, rfspy.EXPECTED_MAX_BLUETOOTH_LATENCY_MS, (byte) 0);
+                if (resp.wasTimeout()) {
+                    Log.e(TAG, String.format("scanForPump: Failed to find pump at frequency %.2f", frequencies[i]));
+                } else if (resp.looksLikeRadioPacket()) {
+                    RadioResponse radioResponse = new RadioResponse(resp.getRaw());
+                    if (radioResponse.isValid()) {
+                        sumRSSI += radioResponse.rssi;
+                        trial.successes++;
+                    } else {
+                        Log.w(TAG,"Failed to parse radio response: " + ByteUtil.shortHexString(resp.getRaw()));
+                    }
+                } else {
+                    Log.e(TAG, "scanForPump: raw response is " + ByteUtil.shortHexString(resp.getRaw()));
+                }
+                trial.tries++;
+            }
+            sumRSSI += -99.0 * (trial.tries - trial.successes);
+            trial.averageRSSI = (double)(sumRSSI) / (double)(trial.tries);
+            results.trials.add(trial);
+        }
+        results.sort(); // sorts in ascending order
+        Log.d(TAG,"Sorted scan results:");
+        for (int k=0; k<results.trials.size(); k++) {
+            FrequencyTrial one = results.trials.get(k);
+            Log.d(TAG,String.format("Scan Result[%d]: Freq=%.2f, avg RSSI = %f",k,one.frequencyMHz, one.averageRSSI));
+        }
+        FrequencyTrial bestTrial = results.trials.get(results.trials.size()-1);
+        results.bestFrequencyMHz = bestTrial.frequencyMHz;
+        if (bestTrial.successes > 0) {
+            rfspy.setBaseFrequency(results.bestFrequencyMHz);
+        } else {
+            Log.e(TAG,"No pump response during scan.");
+        }
+/*
+        // Use ternary search to find frequency with maximum RSSI.
+func searchFrequencies(pump *medtronic.Pump) uint32 {
+        pump.SetRetries(1)
+        lower := startFreq
+        upper := endFreq
+        for {
+                delta := upper - lower
+                if delta < precision {
+                        return (lower + upper) / 2
+                }
+                delta /= 3
+                lowerThird := lower + delta
+                r1 := tryFrequency(pump, lowerThird)
+                upperThird := upper - delta
+                r2 := tryFrequency(pump, upperThird)
+                if r1 < r2 {
+                        lower = lowerThird
+                } else {
+                        upper = upperThird
+                }
+        }
+}
+
+_
+*/
+
+    }
+
+    private PumpMessage makePumpMessage(MessageType messageType, MessageBody messageBody) {
+        PumpMessage msg = new PumpMessage();
+        msg.init(new PacketType(PacketType.Carelink),pumpID,messageType,messageBody);
+        return msg;
+    }
+
+    private PumpMessage makePumpMessage(byte msgType, MessageBody body) {
+        return makePumpMessage(new MessageType(msgType),body);
+    }
+
+    private PumpMessage makePumpMessage(byte[] typeAndBody) {
+        PumpMessage msg = new PumpMessage();
+        msg.init(ByteUtil.concat(ByteUtil.concat(new byte[]{(byte)0xa7},pumpID),typeAndBody));
+        return msg;
+    }
 
     public void testPageDecode() {
         byte[] raw = new byte[] {(byte)0x6D, (byte)0x62, (byte)0x10, (byte)0x05, (byte)0x0C, (byte)0x00, (byte)0xE8, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
@@ -223,144 +368,4 @@ public class PumpManager {
         Log.i(TAG,"testPageDecode: done");
     }
 
-    public void getPumpRTC() {
-        wakeup(6);
-        PumpMessage getRTCMsg = makePumpMessage(new MessageType(MessageType.CMD_M_READ_RTC), new CarelinkShortMessageBody(new byte[]{0}));
-        Log.i(TAG,"getPumpRTC: " + ByteUtil.shortHexString(getRTCMsg.getTxData()));
-        RFSpyResponse response = rfspy.transmitThenReceive(new RadioPacket(getRTCMsg.getTxData()),2000);
-        Log.i(TAG,"getPumpRTC response: " + ByteUtil.shortHexString(response.getRadioResponse().getPayload()));
-    }
-
-    public void getPumpModel() {
-        wakeup(6);
-        PumpMessage msg = makePumpMessage(new MessageType(MessageType.GetPumpModel), new GetPumpModelCarelinkMessageBody());
-        Log.i(TAG,"getPumpModel: " + ByteUtil.shortHexString(msg.getTxData()));
-        PumpMessage response = sendAndListen(msg);
-        Log.i(TAG,"getPumpModel response: " + ByteUtil.shortHexString(response.getContents()));
-    }
-
-    public void tryoutPacket(byte[] pkt) {
-        sendAndListen(makePumpMessage(pkt));
-    }
-
-    public void hunt() {
-        tryoutPacket(new byte[] {MessageType.CMD_M_READ_PUMP_STATUS,0});
-        tryoutPacket(new byte[] {MessageType.CMD_M_READ_FIRMWARE_VER,0});
-        tryoutPacket(new byte[] {MessageType.CMD_M_READ_INSULIN_REMAINING,0});
-
-    }
-
-    // See ButtonPressCarelinkMessageBody
-    public void pressButton(int which) {
-        wakeup(6);
-        PumpMessage pressButtonMessage = makePumpMessage(new MessageType(MessageType.CMD_M_KEYPAD_PUSH),new ButtonPressCarelinkMessageBody(which));
-        PumpMessage resp = sendAndListen(pressButtonMessage);
-        if (resp.messageType.mtype != MessageType.PumpAck) {
-            Log.e(TAG,"Pump did not ack button press.");
-        }
-    }
-
-    public void wakeup(int duration_minutes) {
-        if (SystemClock.elapsedRealtime() > pumpAwakeUntil) {
-            Log.i(TAG,"Waking pump...");
-            PumpMessage msg = makePumpMessage(new MessageType(MessageType.PowerOn), new CarelinkShortMessageBody(new byte[]{(byte) duration_minutes}));
-            RFSpyResponse resp = rfspy.transmitThenReceive(new RadioPacket(msg.getTxData()), (byte) 0, (byte) 200, (byte) 0, (byte) 0, 15000, (byte) 0);
-            Log.i(TAG, "wakeup: raw response is " + ByteUtil.shortHexString(resp.getRaw()));
-            pumpAwakeUntil = SystemClock.elapsedRealtime() + duration_minutes * 60 * 1000;
-        }
-    }
-
-    public void tunePump() {
-        scanForPump(scanFrequencies);
-    }
-
-    private void scanForPump(double[] frequencies) {
-        wakeup(1);
-        FrequencyScanResults results = new FrequencyScanResults();
-
-        for (int i=0; i<frequencies.length; i++) {
-            int tries = 3;
-            FrequencyTrial trial = new FrequencyTrial();
-            trial.frequencyMHz = frequencies[i];
-            int sumRSSI = 0;
-            for (int j = 0; j<tries; j++) {
-                PumpMessage msg = makePumpMessage(new MessageType(MessageType.GetPumpModel), new GetPumpModelCarelinkMessageBody());
-                rfspy.setBaseFrequency(frequencies[i]);
-                RFSpyResponse resp = rfspy.transmitThenReceive(new RadioPacket(msg.getTxData()),(byte) 0, (byte) 0, (byte) 0, (byte) 0, rfspy.EXPECTED_MAX_BLUETOOTH_LATENCY_MS, (byte) 0);
-                if (resp.wasTimeout()) {
-                    Log.e(TAG, String.format("scanForPump: Failed to find pump at frequency %.2f", frequencies[i]));
-                } else if (resp.looksLikeRadioPacket()) {
-                    RadioResponse radioResponse = new RadioResponse(resp.getRaw());
-                    if (radioResponse.isValid()) {
-                        sumRSSI += radioResponse.rssi;
-                        trial.successes++;
-                    } else {
-                        Log.w(TAG,"Failed to parse radio response: " + ByteUtil.shortHexString(resp.getRaw()));
-                    }
-                } else {
-                    Log.e(TAG, "scanForPump: raw response is " + ByteUtil.shortHexString(resp.getRaw()));
-                }
-                trial.tries++;
-            }
-            sumRSSI += -99.0 * (trial.tries - trial.successes);
-            trial.averageRSSI = (double)(sumRSSI) / (double)(trial.tries);
-            results.trials.add(trial);
-        }
-        results.sort(); // sorts in ascending order
-        Log.d(TAG,"Sorted scan results:");
-        for (int k=0; k<results.trials.size(); k++) {
-            FrequencyTrial one = results.trials.get(k);
-            Log.d(TAG,String.format("Scan Result[%d]: Freq=%.2f, avg RSSI = %f",k,one.frequencyMHz, one.averageRSSI));
-        }
-        FrequencyTrial bestTrial = results.trials.get(results.trials.size()-1);
-        results.bestFrequencyMHz = bestTrial.frequencyMHz;
-        if (bestTrial.successes > 0) {
-            rfspy.setBaseFrequency(results.bestFrequencyMHz);
-        } else {
-            Log.e(TAG,"No pump response during scan.");
-        }
-/*
-        // Use ternary search to find frequency with maximum RSSI.
-func searchFrequencies(pump *medtronic.Pump) uint32 {
-        pump.SetRetries(1)
-        lower := startFreq
-        upper := endFreq
-        for {
-                delta := upper - lower
-                if delta < precision {
-                        return (lower + upper) / 2
-                }
-                delta /= 3
-                lowerThird := lower + delta
-                r1 := tryFrequency(pump, lowerThird)
-                upperThird := upper - delta
-                r2 := tryFrequency(pump, upperThird)
-                if r1 < r2 {
-                        lower = lowerThird
-                } else {
-                        upper = upperThird
-                }
-        }
-}
-
-_
-*/
-
-    }
-
-    private PumpMessage makePumpMessage(MessageType messageType, MessageBody messageBody) {
-        PumpMessage msg = new PumpMessage();
-        msg.init(new PacketType(PacketType.Carelink),pumpID,messageType,messageBody);
-        return msg;
-    }
-
-    private PumpMessage makePumpMessage(byte msgType, MessageBody body) {
-        return makePumpMessage(new MessageType(msgType),body);
-    }
-
-    private PumpMessage makePumpMessage(byte[] typeAndBody) {
-        PumpMessage msg = new PumpMessage();
-        msg.init(ByteUtil.concat(ByteUtil.concat(new byte[]{(byte)0xa7},pumpID),typeAndBody));
-        return msg;
-    }
 }

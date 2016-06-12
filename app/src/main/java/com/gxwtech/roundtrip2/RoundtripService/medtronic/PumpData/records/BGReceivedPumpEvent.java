@@ -18,6 +18,8 @@ public class BGReceivedPumpEvent extends TimeStampedRecord {
         }
         amount = (asUINT8(data[1]) << 3) + (asUINT8(data[4])>>5);
         meter = ByteUtil.substring(data,7,3);
+        addValue("amount",amount);
+        addValue("meter",meter);
         return true;
     }
 }

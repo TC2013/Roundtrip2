@@ -77,6 +77,18 @@ public class BolusWizardBolusEstimatePumpEvent extends TimeStampedRecord {
             insulinSensitivity = asUINT8(data[10]);
             carbRatio = (double)asUINT8(data[9]);
         }
+
+        addValue("carbohydrates",carbohydrates);
+        addValue("bloodGlucose",bloodGlucose);
+        addValue("foodEstimate",foodEstimate);
+        addValue("correctionEstimate",correctionEstimate);
+        addValue("bolusEstimate",bolusEstimate);
+        addValue("unabsorbedInsulinTotal",unabsorbedInsulinTotal);
+        addValue("bgTargetLow",bgTargetLow);
+        addValue("bgTargetHigh",bgTargetHigh);
+        addValue("insulinSensitivity",insulinSensitivity);
+        addValue("carbRatio",carbRatio);
+
         return true;
     }
 }
