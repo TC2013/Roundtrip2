@@ -25,7 +25,6 @@ import com.gxwtech.roundtrip2.util.StringUtil;
 import org.joda.time.Instant;
 import org.joda.time.LocalDateTime;
 
-import java.io.File;
 import java.util.ArrayList;
 
 

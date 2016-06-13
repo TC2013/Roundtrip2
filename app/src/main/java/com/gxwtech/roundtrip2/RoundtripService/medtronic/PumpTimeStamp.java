@@ -1,7 +1,5 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic;
 
-import android.os.Parcel;
-
 import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
 

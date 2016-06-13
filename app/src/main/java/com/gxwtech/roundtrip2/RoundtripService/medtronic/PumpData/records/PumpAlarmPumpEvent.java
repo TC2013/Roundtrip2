@@ -2,8 +2,6 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
@@ -11,6 +9,12 @@ public class PumpAlarmPumpEvent extends TimeStampedRecord {
     private int rawtype = 0;
     public PumpAlarmPumpEvent() {
     }
+
+    @Override
+    public String getShortTypeName() {
+        return "Pump Alarm";
+    }
+
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         if (!simpleParse(9,data,4)) {

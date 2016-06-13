@@ -2,7 +2,6 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
 import android.os.Bundle;
-import android.os.Parcelable;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.util.ByteUtil;
@@ -12,6 +11,11 @@ public class BGReceivedPumpEvent extends TimeStampedRecord {
     private byte[] meter = new byte[3];
 
     public BGReceivedPumpEvent() {
+    }
+
+    @Override
+    public String getShortTypeName() {
+        return "BG Received";
     }
 
     @Override

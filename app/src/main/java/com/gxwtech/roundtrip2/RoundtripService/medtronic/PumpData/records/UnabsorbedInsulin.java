@@ -2,7 +2,6 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
 import android.os.Bundle;
-import android.os.Parcelable;
 import android.util.Log;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
@@ -11,6 +10,11 @@ import java.util.ArrayList;
 
 public class UnabsorbedInsulin extends Record {
     private static final String TAG = "UnabsorbedInsulin";
+
+    @Override
+    public String getShortTypeName() {
+        return "Unabsorbed Insulin";
+    }
 
     class UnabsorbedInsulinRecord {
         public double amount = 0.0;

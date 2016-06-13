@@ -1,7 +1,5 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
-import android.os.Parcelable;
-
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 /**
@@ -9,6 +7,11 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
  */
 public class ChangeBolusReminderTimePumpEvent extends TimeStampedRecord {
     public ChangeBolusReminderTimePumpEvent(){}
+
+    @Override
+    public String getShortTypeName() {
+        return "Ch Bolus Rmndr Time";
+    }
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {

@@ -12,7 +12,6 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData;
  */
 
 import android.os.Bundle;
-import android.os.Parcelable;
 import android.util.Log;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.BolusWizardBolusEstimatePumpEvent;
@@ -180,7 +179,7 @@ public class Page {
             Log.i(TAG, String.format("Number of records: %d", mRecordList.size()));
             int index = 1;
             for (Record r : mRecordList) {
-                Log.v(TAG, String.format("Record #%d: %s", index,r.getRecordTypeName()));
+                Log.v(TAG, String.format("Record #%d: %s", index,r.getShortTypeName()));
                 index += 1;
             }
         }
@@ -209,7 +208,7 @@ public class Page {
             System.arraycopy(data, offsetStart, tmpData, 0, data.length - offsetStart);
             boolean didParse = record.parseFrom(tmpData, PumpModel.MM522);
             if (!didParse) {
-                Log.e(TAG,String.format("attemptParseRecord: class %s (opcode 0x%02X) failed to parse at offset %d",record.getRecordTypeName(),data[offsetStart],offsetStart));
+                Log.e(TAG,String.format("attemptParseRecord: class %s (opcode 0x%02X) failed to parse at offset %d",record.getShortTypeName(),data[offsetStart],offsetStart));
             }
         }
         return record;

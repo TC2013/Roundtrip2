@@ -1,12 +1,15 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
-import android.os.Parcelable;
-
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 public class ChangeBasalProfilePumpEvent extends TimeStampedRecord {
     public ChangeBasalProfilePumpEvent() {
+    }
+
+    @Override
+    public String getShortTypeName() {
+        return "Ch Basal Profile";
     }
 
     @Override

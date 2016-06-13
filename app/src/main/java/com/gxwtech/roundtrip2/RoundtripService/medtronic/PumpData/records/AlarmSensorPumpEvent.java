@@ -1,8 +1,6 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
-import android.os.Parcelable;
-
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 /**
@@ -16,4 +14,8 @@ public class AlarmSensorPumpEvent extends TimeStampedRecord {
         return simpleParse(8,data,2);
     }
 
+    @Override
+    public String getShortTypeName() {
+        return "Alarm Sensor";
+    }
 }

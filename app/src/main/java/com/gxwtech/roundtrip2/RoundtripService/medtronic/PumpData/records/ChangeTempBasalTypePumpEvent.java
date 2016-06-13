@@ -1,8 +1,6 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
@@ -12,6 +10,11 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 public class ChangeTempBasalTypePumpEvent extends TimeStampedRecord {
     private boolean isPercent=false; // either absolute or percent
     public ChangeTempBasalTypePumpEvent() {}
+
+    @Override
+    public String getShortTypeName() {
+        return "Ch Temp Basal Type";
+    }
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {

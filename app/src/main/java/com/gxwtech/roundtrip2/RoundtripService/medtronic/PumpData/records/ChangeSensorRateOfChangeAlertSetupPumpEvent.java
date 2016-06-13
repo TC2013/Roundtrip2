@@ -1,7 +1,5 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
-import android.os.Parcelable;
-
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 /**
@@ -11,7 +9,13 @@ public class ChangeSensorRateOfChangeAlertSetupPumpEvent extends TimeStampedReco
     public ChangeSensorRateOfChangeAlertSetupPumpEvent() {}
 
     @Override
+    public String getShortTypeName() {
+        return "Ch Sensor ROC Alert";
+    }
+
+    @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         return simpleParse(12,data,2);
     }
+
 }

@@ -1,8 +1,6 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
@@ -31,6 +29,11 @@ public class BolusWizardBolusEstimatePumpEvent extends TimeStampedRecord {
         bolusEstimate = 0.0;
         foodEstimate = 0.0;
         unabsorbedInsulinTotal = 0.0;
+    }
+
+    @Override
+    public String getShortTypeName() {
+        return "Bolus Wizard Est.";
     }
 
     @Override

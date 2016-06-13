@@ -1,12 +1,15 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
-import android.os.Parcelable;
-
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 public class ResultDailyTotalPumpEvent extends TimeStampedRecord {
     private static final String TAG = "ResultDailyTotalPumpEvent";
     public ResultDailyTotalPumpEvent() {
+    }
+
+    @Override
+    public String getShortTypeName() {
+        return "Result Daily Total";
     }
 
     @Override

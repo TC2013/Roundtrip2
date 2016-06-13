@@ -1,14 +1,18 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 public class CalBgForPhPumpEvent extends TimeStampedRecord {
     private int amount = 0;
+
     public CalBgForPhPumpEvent() {
+    }
+
+    @Override
+    public String getShortTypeName() {
+        return "Cal Bg For Ph";
     }
 
     @Override

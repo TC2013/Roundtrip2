@@ -1,8 +1,6 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpTimeStamp;
@@ -11,11 +9,11 @@ abstract public class Record {
     private static final String TAG = "Record";
     protected byte recordOp;
     protected int length;
-    protected Bundle mDictionaryRepresentation = new Bundle();
-    protected String recordTypeName = this.getClass().getSimpleName();
+    //protected String recordTypeName = this.getClass().getSimpleName();
 
-    public String getRecordTypeName() {
-        return recordTypeName;
+    public String getRecordTypeName() { return this.getClass().getSimpleName(); }
+    public String getShortTypeName() {
+        return this.getClass().getSimpleName();
     }
 
     public Record() {
@@ -49,34 +47,6 @@ abstract public class Record {
         return (b < 0) ? b + 256 : b;
     }
 
-    protected void addValue(Bundle b, String key, int intValue) {
-        b.putInt(key, intValue);
-    }
-
-    protected void addValue(Bundle b, String key, double doubleValue) {
-        b.putDouble(key, doubleValue);
-    }
-
-    protected void addValue(Bundle b, String key, String stringValue) {
-        mDictionaryRepresentation.putString(key, stringValue);
-    }
-
-    protected void addValue(Bundle b, String key, PumpTimeStamp timestampValue) {
-        mDictionaryRepresentation.putSerializable(key, timestampValue.getLocalDateTime());
-    }
-
-    protected void addValue(Bundle b, String key, byte[] byteArray) {
-        mDictionaryRepresentation.putByteArray(key, byteArray);
-    }
-
-    protected void addValue(Bundle b, String key, boolean truthValue) {
-        mDictionaryRepresentation.putBoolean(key, truthValue);
-    }
-
-    protected void addValue(Bundle b, String key, byte byteVal) {
-        mDictionaryRepresentation.putByte(key,byteVal);
-    }
-
     public Bundle dictionaryRepresentation() {
         Bundle rval = new Bundle();
         writeToBundle(rval);
@@ -93,7 +63,8 @@ abstract public class Record {
     public void writeToBundle(Bundle in) {
         in.putInt("length",length);
         in.putInt("_opcode",recordOp);
-        in.putString("_type",getRecordTypeName());
+        in.putString("_type", getRecordTypeName());
+        in.putString("_stype", getShortTypeName());
     }
 
 }

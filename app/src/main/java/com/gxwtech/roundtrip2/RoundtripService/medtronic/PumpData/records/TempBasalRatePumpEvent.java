@@ -2,8 +2,6 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
@@ -12,6 +10,11 @@ public class TempBasalRatePumpEvent extends TimeStampedRecord {
     private boolean mIsPercent = false; // The value is either an absolute number or a percentage
 
     public TempBasalRatePumpEvent() { }
+
+    @Override
+    public String getShortTypeName() {
+        return "Temp Basal Rate";
+    }
 
     public double getBasalRate() { return basalRate; }
     public boolean isPercent() { return mIsPercent; }

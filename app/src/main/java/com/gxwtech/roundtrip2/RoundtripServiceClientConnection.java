@@ -13,9 +13,6 @@ import android.os.RemoteException;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import com.gxwtech.roundtrip2.RT2Const;
-import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
-
 /**
  * Created by geoff on 6/11/16.
  */

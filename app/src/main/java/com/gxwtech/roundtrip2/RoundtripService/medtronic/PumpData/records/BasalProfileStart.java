@@ -1,8 +1,6 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
@@ -14,6 +12,11 @@ public class BasalProfileStart extends TimeStampedRecord {
 
     public BasalProfileStart() {
         length = 10;
+    }
+
+    @Override
+    public String getShortTypeName() {
+        return "Basal Profile Start";
     }
 
     @Override

@@ -1,11 +1,11 @@
 package com.gxwtech.roundtrip2;
 
 import android.os.Bundle;
-
-import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.Record;
+import android.util.ArraySet;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,52 +27,66 @@ public class HistoryPageListContent {
 
     private static void addItem(RecordHolder item) {
         ITEMS.add(item);
-        ITEM_MAP.put("#"+item.hashCode(), item);
+        ITEM_MAP.put(item.id, item);
     }
 
     private static String makeDetails(int position) {
-        StringBuilder builder = new StringBuilder();
         RecordHolder rh = ITEMS.get(position);
         if (rh == null) {
             return "(null)";
         }
-        Set<String> keys = rh.content.keySet();
-        for (String key : keys) {
-            builder.append(key);
-            builder.append("\n");
+
+        return makeDetails(rh.content);
+    }
+
+    private static String makeDetails(Bundle historyEntry) {
+        Set<String> ignoredSet = new HashSet<>();
+        ignoredSet.add("_type");
+        ignoredSet.add("_stype");
+        ignoredSet.add("_opcode");
+        ignoredSet.add("timestamp");
+        StringBuilder builder = new StringBuilder();
+        int n = 0;
+        for (String key : historyEntry.keySet()) {
+            if (!ignoredSet.contains(key)) {
+                builder.append(key);
+                n++;
+                if (n<historyEntry.keySet().size()-1) {
+                    builder.append("\n");
+                }
+            }
         }
-        /*
-        builder.append("Details about Item: ").append(position);
-        for (int i = 0; i < position; i++) {
-            builder.append("\nMore details information here.");
-        }
-        */
         return builder.toString();
     }
 
-    /**
-     * A dummy item representing a piece of content.
-     */
-
     public static class RecordHolder {
         public final String id;
+        public final String dateAndName;
         public final Bundle content;
         public final String details;
 
         public RecordHolder(Bundle content) {
-            this.id = String.format("%s\n%s",content.getString("timestamp"),content.getString("_type"));
-            this.content = content;
-            StringBuilder builder = new StringBuilder();
-            for (String key : content.keySet()) {
-                builder.append(key);
-                builder.append("\n");
+            id = String.format("%d",content.hashCode());
+            String rawTimestamp = content.getString("timestamp","0000-00-00T00:00:00");
+            int tspot = rawTimestamp.indexOf('T');
+            StringBuilder dateAndNameBuilder = new StringBuilder();
+            dateAndNameBuilder.append(rawTimestamp.substring(0,tspot-1));
+            dateAndNameBuilder.append("\n");
+            dateAndNameBuilder.append(rawTimestamp.substring(tspot+1,rawTimestamp.length()-1));
+            dateAndNameBuilder.append("\n");
+            String veryShortName = content.getString("_stype","(??????)");
+            if (veryShortName.length() >= 12) {
+                veryShortName = veryShortName.substring(0,12);
             }
-            this.details = builder.toString();
+            dateAndNameBuilder.append(veryShortName);
+            this.dateAndName = dateAndNameBuilder.toString();
+            this.content = content;
+            details = makeDetails(content);
         }
 
         @Override
         public String toString() {
-            return content.getString("_type");
+            return content.getString("_stype", "(unk)");
         }
     }
 

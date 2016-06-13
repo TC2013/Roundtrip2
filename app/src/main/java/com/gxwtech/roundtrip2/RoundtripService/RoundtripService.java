@@ -1,9 +1,7 @@
 package com.gxwtech.roundtrip2.RoundtripService;
 
-import android.app.IntentService;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -11,13 +9,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
-import android.os.Messenger;
 import android.os.PowerManager;
-import android.os.RemoteException;
-import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
@@ -31,7 +25,6 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -171,7 +164,7 @@ public class RoundtripService extends Service {
                             pumpManager.tunePump();
                         } else if (action.equals(RT2Const.IPC.MSG_PUMP_fetchHistory)) {
                             mHistoryPages = pumpManager.getAllHistoryPages();
-                            final boolean savePages = false;
+                            final boolean savePages = true;
                             if (savePages) {
                                 for (int i = 0; i < mHistoryPages.size(); i++) {
                                     String filename = "PumpHistoryPage-" + i;

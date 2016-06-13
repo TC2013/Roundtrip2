@@ -6,26 +6,23 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import android.support.v7.app.ActionBar;
-import android.view.MenuItem;
-
-import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.Record;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * An activity representing a list of HistoryPages. This activity
@@ -161,8 +158,20 @@ public class HistoryPageListActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(final ViewHolder holder, int position) {
             holder.mItem = mValues.get(position);
-            holder.mIdView.setText(mValues.get(position).id);
-            holder.mContentView.setText("mValues.get(position).content");
+            holder.mIdView.setText(mValues.get(position).dateAndName);
+            String keytext = new String();
+            Set<String> keys = holder.mItem.content.keySet();
+            int n = 0;
+            for (String key : keys) {
+                if (!key.equals("_type") && !key.equals("_stype") && !key.equals("timestamp") && !key.equals("_opcode")) {
+                    keytext += key + ":" + holder.mItem.content.get(key).toString();
+                    n++;
+                    if (n < keys.size() - 1) {
+                        keytext += "\n";
+                    }
+                }
+            }
+            holder.mContentView.setText(keytext);
 
             holder.mView.setOnClickListener(new View.OnClickListener() {
                 @Override

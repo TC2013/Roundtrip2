@@ -2,8 +2,6 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpTimeStamp;
@@ -19,6 +17,11 @@ public class BolusNormalPumpEvent extends TimeStampedRecord {
     private String bolusType = "Unset";
 
     public BolusNormalPumpEvent() {
+    }
+
+    @Override
+    public String getShortTypeName() {
+        return "Normal Bolus";
     }
 
     private double insulinDecode(int a, int b) {

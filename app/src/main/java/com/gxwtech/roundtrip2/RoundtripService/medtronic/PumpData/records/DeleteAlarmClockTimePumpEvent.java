@@ -1,7 +1,5 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
-import android.os.Parcelable;
-
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 /**
@@ -9,6 +7,11 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
  */
 public class DeleteAlarmClockTimePumpEvent extends TimeStampedRecord {
     public DeleteAlarmClockTimePumpEvent() {}
+
+    @Override
+    public String getShortTypeName() {
+        return "Del Alarm Clock Time";
+    }
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {

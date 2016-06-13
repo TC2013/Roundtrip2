@@ -1,14 +1,17 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 public class TempBasalDurationPumpEvent extends TimeStampedRecord {
     private int durationMinutes = 0;
     public TempBasalDurationPumpEvent() { }
+
+    @Override
+    public String getShortTypeName() {
+        return "Temp Basal Duration";
+    }
 
     public int getDurationMinutes() {
         return durationMinutes;
