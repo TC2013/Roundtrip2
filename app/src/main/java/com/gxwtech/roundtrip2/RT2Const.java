@@ -44,6 +44,7 @@ public class RT2Const {
         public static final String MSG_PUMP_pumpLost = Prefix + "MSG_PUMP_pumpLost";
 
         public static final String MSG_PUMP_tunePump = Prefix + "MSG_PUMP_tunePump";
+        public static final String MSG_PUMP_quickTune = Prefix + "MSG_PUMP_quickTune";
         public static final String MSG_PUMP_fetchHistory = Prefix + "MSG_PUMP_fetchHistory";
 
         public static final String MSG_PUMP_history = Prefix + "MSG_PUMP_history";
@@ -76,6 +77,7 @@ public class RT2Const {
         // These are used to identify shared preference items
         public static final String pumpIDKey = Prefix + "PumpIDKey";
         public static final String rileylinkAddressKey = Prefix + "rileylinkAddressKey";
+        public static final String prefsLastGoodPumpFrequency = Prefix + "prefsLastGoodPumpFrequency";
 
         // The the key to identify the hashCode() of the msg.replyTo, when the bundle is moved to an intent.
         public static final String IPCReplyTo_hashCodeKey = Prefix + "IPCReplyTo_hashCodeKey";

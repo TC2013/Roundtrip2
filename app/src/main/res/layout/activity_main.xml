@@ -66,6 +66,13 @@
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="Do Quick Tune"
+            android:id="@+id/buttonQuickTune"
+            android:onClick="onQuickTuneButtonClicked"/>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="Tune Pump"
             android:id="@+id/buttonTunePump"
             android:onClick="onTunePumpButtonClicked" />

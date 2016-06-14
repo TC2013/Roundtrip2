@@ -197,4 +197,8 @@ public class MainActivity extends AppCompatActivity {
         sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchSavedHistory);
     }
 
+    public void onQuickTuneButtonClicked(View view) {
+        sendIPCMessage(RT2Const.IPC.MSG_PUMP_quickTune);
+    }
+
 }

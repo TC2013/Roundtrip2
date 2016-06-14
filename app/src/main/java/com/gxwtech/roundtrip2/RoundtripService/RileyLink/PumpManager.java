@@ -191,11 +191,87 @@ public class PumpManager {
         }
     }
 
-    public void tunePump() {
-        scanForPump(scanFrequencies);
+    public void setRadioFrequencyForPump(double freqMHz) {
+        rfspy.setBaseFrequency(freqMHz);
     }
 
-    private void scanForPump(double[] frequencies) {
+    public double tuneForPump() {
+        return scanForPump(scanFrequencies);
+    }
+
+    private int tune_tryFrequency(double freqMHz) {
+        rfspy.setBaseFrequency(freqMHz);
+        PumpMessage msg = makePumpMessage(new MessageType(MessageType.GetPumpModel),new GetPumpModelCarelinkMessageBody());
+        RadioPacket pkt = new RadioPacket(msg.getTxData());
+        RFSpyResponse resp = rfspy.transmitThenReceive(pkt,(byte)0,(byte)0,(byte)0,(byte)0,rfspy.EXPECTED_MAX_BLUETOOTH_LATENCY_MS,(byte)0);
+        if (resp.wasTimeout()) {
+            Log.w(TAG,String.format("tune_tryFrequency: no pump response at frequency %.2f",freqMHz));
+        } else if (resp.looksLikeRadioPacket()) {
+            RadioResponse radioResponse = new RadioResponse(resp.getRaw());
+            if (radioResponse.isValid()) {
+                Log.w(TAG,String.format("tune_tryFrequency: saw response level %d at frequency %.2f",radioResponse.rssi,freqMHz));
+                return radioResponse.rssi;
+            } else {
+                Log.w(TAG,"tune_tryFrequency: invalid radio response:"+ByteUtil.shortHexString(radioResponse.getPayload()));
+            }
+        }
+        return 0;
+    }
+
+    public double quickTuneForPump(double startFrequencyMHz) {
+        double betterFrequency = startFrequencyMHz;
+        double stepsize = 0.05;
+        for (int tries = 0; tries < 4; tries++) {
+            double evenBetterFrequency = quickTunePumpStep(betterFrequency, stepsize);
+            if (evenBetterFrequency == 0.0) {
+                // could not see the pump at all.
+                // Try again at larger step size
+                stepsize += 0.05;
+            } else {
+                if ((int)(evenBetterFrequency * 100) == (int)(betterFrequency * 100)) {
+                    // value did not change, so we're done.
+                    break;
+                }
+                betterFrequency = evenBetterFrequency; // and go again.
+            }
+        }
+        if (betterFrequency == 0.0) {
+            // we've failed... caller should try a full scan for pump
+            Log.e(TAG,"quickTuneForPump: failed to find pump");
+        } else {
+            rfspy.setBaseFrequency(betterFrequency);
+            if (betterFrequency != startFrequencyMHz) {
+                Log.i(TAG, String.format("quickTuneForPump: new frequency is %.2fMHz", betterFrequency));
+            } else {
+                Log.i(TAG, String.format("quickTuneForPump: pump frequency is the same: %.2fMHz", startFrequencyMHz));
+            }
+        }
+        return betterFrequency;
+    }
+
+    private double quickTunePumpStep(double startFrequencyMHz, double stepSizeMHz) {
+        Log.i(TAG,"Doing quick radio tune for pump ID " + pumpID);
+        wakeup(1);
+        int startRssi = tune_tryFrequency(startFrequencyMHz);
+        double lowerFrequency = startFrequencyMHz - stepSizeMHz;
+        int lowerRssi = tune_tryFrequency(lowerFrequency);
+        double higherFrequency = startFrequencyMHz + stepSizeMHz;
+        int higherRssi = tune_tryFrequency(higherFrequency);
+        if ((higherRssi == 0.0) && (lowerRssi == 0.0) && (startRssi == 0.0)) {
+            // we can't see the pump at all...
+            return 0.0;
+        }
+        if (higherRssi > startRssi) {
+            // need to move higher
+            return higherFrequency;
+        } else if (lowerRssi > startRssi) {
+            // need to move lower.
+            return lowerFrequency;
+        }
+        return startFrequencyMHz;
+    }
+
+    private double scanForPump(double[] frequencies) {
         Log.i(TAG,"Scanning for pump ID " + pumpID);
         wakeup(1);
         FrequencyScanResults results = new FrequencyScanResults();
@@ -238,8 +314,10 @@ public class PumpManager {
         results.bestFrequencyMHz = bestTrial.frequencyMHz;
         if (bestTrial.successes > 0) {
             rfspy.setBaseFrequency(results.bestFrequencyMHz);
+            return results.bestFrequencyMHz;
         } else {
             Log.e(TAG,"No pump response during scan.");
+            return 0.0;
         }
 /*
         // Use ternary search to find frequency with maximum RSSI.

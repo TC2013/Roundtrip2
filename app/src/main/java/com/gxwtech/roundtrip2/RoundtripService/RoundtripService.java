@@ -119,6 +119,7 @@ public class RoundtripService extends Service {
                             Log.i(TAG, "Announcing RileyLink open For business");
                             serviceConnection.sendMessage(RT2Const.IPC.MSG_BLE_RileyLinkReady);
                             pumpManager = new PumpManager(rfspy, pumpIDBytes);
+                            setPumpManagerToLastKnownGoodFrequency();
                             PumpModel reportedPumpModel = pumpManager.getPumpModel();
                             if (!reportedPumpModel.equals(PumpModel.UNSET)) {
                                 serviceConnection.sendMessage(RT2Const.IPC.MSG_PUMP_pumpFound);
@@ -161,7 +162,9 @@ public class RoundtripService extends Service {
 
                             }
                         } else if (action.equals(RT2Const.IPC.MSG_PUMP_tunePump)) {
-                            pumpManager.tunePump();
+                            doTunePump();
+                        } else if (action.equals(RT2Const.IPC.MSG_PUMP_quickTune)) {
+                            doTunePump();
                         } else if (action.equals(RT2Const.IPC.MSG_PUMP_fetchHistory)) {
                             mHistoryPages = pumpManager.getAllHistoryPages();
                             final boolean savePages = true;
@@ -315,6 +318,41 @@ public class RoundtripService extends Service {
         }
 
         return lockStatic;
+    }
+
+    private void setPumpManagerToLastKnownGoodFrequency() {
+        double lastGoodFrequency = sharedPref.getFloat(RT2Const.serviceLocal.prefsLastGoodPumpFrequency,(float)0.0);
+        if (lastGoodFrequency != 0) {
+            Log.i(TAG,String.format("Setting radio frequency to %.2fMHz",lastGoodFrequency));
+            pumpManager.setRadioFrequencyForPump(lastGoodFrequency);
+        }
+    }
+
+    // FIXME: This needs to be run in a session so that is interruptable, has a separate thread, etc.
+    private void doTunePump() {
+        double lastGoodFrequency = sharedPref.getFloat(RT2Const.serviceLocal.prefsLastGoodPumpFrequency,(float)0.0);
+        double newFrequency;
+        if (lastGoodFrequency != 0.0) {
+            Log.i(TAG,String.format("Checking for pump near last saved frequency of %.2fMHz",lastGoodFrequency));
+            // we have an old frequency, so let's start there.
+            newFrequency = pumpManager.quickTuneForPump(lastGoodFrequency);
+            if (newFrequency == 0.0) {
+                // quick scan failed to find pump.  Try full scan
+                Log.w(TAG,String.format("Failed to find pump near last saved frequency, doing full scan"));
+                newFrequency = pumpManager.tuneForPump();
+            }
+        } else {
+            Log.w(TAG,"No saved frequency for pump, doing full scan.");
+            // we don't have a saved frequency, so do the full scan.
+            newFrequency = pumpManager.tuneForPump();
+
+        }
+        if ((newFrequency!=0.0) && (newFrequency != lastGoodFrequency)) {
+            Log.i(TAG,String.format("Saving new pump frequency of %.2fMHz",newFrequency));
+            SharedPreferences.Editor ed = sharedPref.edit();
+            ed.putFloat(RT2Const.serviceLocal.prefsLastGoodPumpFrequency, (float)newFrequency);
+            ed.apply();
+        }
     }
 
     @Override
