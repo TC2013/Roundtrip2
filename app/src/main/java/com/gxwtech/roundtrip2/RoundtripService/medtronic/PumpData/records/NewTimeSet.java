@@ -7,6 +7,7 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 public class NewTimeSet extends TimeStampedRecord {
     public NewTimeSet() {
     }
+
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         return false;

@@ -5,4 +5,9 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
  */
 public class ChangeAlarmClockEnablePumpEvent extends TimeStampedRecord {
     public ChangeAlarmClockEnablePumpEvent() {}
+
+    @Override
+    public String getShortTypeName() {
+        return "Alarm Clock Enable";
+    }
 }

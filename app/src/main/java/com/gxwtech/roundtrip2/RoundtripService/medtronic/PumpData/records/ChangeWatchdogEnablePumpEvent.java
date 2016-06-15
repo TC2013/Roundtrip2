@@ -5,4 +5,9 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
  */
 public class ChangeWatchdogEnablePumpEvent extends TimeStampedRecord {
     public ChangeWatchdogEnablePumpEvent(){}
+
+    @Override
+    public String getShortTypeName() {
+        return "Ch Watchdog Enable";
+    }
 }

@@ -1,5 +1,7 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
+import android.os.Bundle;
+
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 
 public class BolusWizardBolusEstimatePumpEvent extends TimeStampedRecord {
@@ -27,6 +29,41 @@ public class BolusWizardBolusEstimatePumpEvent extends TimeStampedRecord {
         bolusEstimate = 0.0;
         foodEstimate = 0.0;
         unabsorbedInsulinTotal = 0.0;
+    }
+
+    @Override
+    public String getShortTypeName() {
+        return "Bolus Wizard Est.";
+    }
+
+    @Override
+    public boolean readFromBundle(Bundle in) {
+        carbohydrates = in.getInt("carbohydrates",0);
+        bloodGlucose = in.getInt("bloodGlucose",0);
+        foodEstimate = in.getDouble("foodEstimate",0);
+        correctionEstimate = in.getDouble("correctionEstimate",0);
+        bolusEstimate = in.getDouble("bolusEstimate",0);
+        unabsorbedInsulinTotal = in.getDouble("unabsorbedInsulinTotal",0);
+        bgTargetLow = in.getInt("bgTargetLow",0);
+        bgTargetHigh = in.getInt("bgTargetHigh",0);
+        insulinSensitivity = in.getInt("insulinSensitivity",0);
+        carbRatio = in.getDouble("carbRatio",0);
+        return super.readFromBundle(in);
+    }
+
+    @Override
+    public void writeToBundle(Bundle in) {
+        super.writeToBundle(in);
+        in.putInt("carbohydrates",carbohydrates);
+        in.putInt("bloodGlucose",bloodGlucose);
+        in.putDouble("foodEstimate",foodEstimate);
+        in.putDouble("correctionEstimate",correctionEstimate);
+        in.putDouble("bolusEstimate",bolusEstimate);
+        in.putDouble("unabsorbedInsulinTotal",unabsorbedInsulinTotal);
+        in.putInt("bgTargetLow",bgTargetLow);
+        in.putInt("bgTargetHigh",bgTargetHigh);
+        in.putInt("insulinSensitivity",insulinSensitivity);
+        in.putDouble("carbRatio",carbRatio);
     }
 
     public double getCorrectionEstimate() { return correctionEstimate; }
@@ -77,6 +114,7 @@ public class BolusWizardBolusEstimatePumpEvent extends TimeStampedRecord {
             insulinSensitivity = asUINT8(data[10]);
             carbRatio = (double)asUINT8(data[9]);
         }
+
         return true;
     }
 }

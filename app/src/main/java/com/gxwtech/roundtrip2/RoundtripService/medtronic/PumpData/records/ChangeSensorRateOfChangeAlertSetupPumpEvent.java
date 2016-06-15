@@ -9,7 +9,13 @@ public class ChangeSensorRateOfChangeAlertSetupPumpEvent extends TimeStampedReco
     public ChangeSensorRateOfChangeAlertSetupPumpEvent() {}
 
     @Override
+    public String getShortTypeName() {
+        return "Ch Sensor ROC Alert";
+    }
+
+    @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         return simpleParse(12,data,2);
     }
+
 }

@@ -5,4 +5,9 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
  */
 public class ChangeVariableBolusPumpEvent extends TimeStampedRecord {
     public ChangeVariableBolusPumpEvent(){}
+
+    @Override
+    public String getShortTypeName() {
+        return "Ch Var. Bolus";
+    }
 }

@@ -5,4 +5,9 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
  */
 public class ChangeCarbUnitsPumpEvent extends TimeStampedRecord {
     public ChangeCarbUnitsPumpEvent() {}
+
+    @Override
+    public String getShortTypeName() {
+        return "Ch Carb Units";
+    }
 }

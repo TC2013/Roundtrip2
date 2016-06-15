@@ -9,6 +9,11 @@ public class JournalEntryExerciseMarkerPumpEvent extends TimeStampedRecord {
     public JournalEntryExerciseMarkerPumpEvent(){}
 
     @Override
+    public String getShortTypeName() {
+        return "Exercise Marker";
+    }
+
+    @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         return simpleParse(8, data, 2);
     }

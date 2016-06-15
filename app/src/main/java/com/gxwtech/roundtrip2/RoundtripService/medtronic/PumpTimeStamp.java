@@ -10,6 +10,7 @@ import org.joda.time.LocalDateTime;
 public class PumpTimeStamp {
     private LocalDateTime localDateTime = new LocalDateTime();
     public PumpTimeStamp() {}
+    public PumpTimeStamp(String stringRepresentation) { localDateTime.parse(stringRepresentation); }
     public PumpTimeStamp(LocalDate localDate) {
         localDateTime = new LocalDateTime(localDate);
     }
@@ -23,4 +24,5 @@ public class PumpTimeStamp {
     public String toString() {
         return getLocalDateTime().toString();
     }
+
 }

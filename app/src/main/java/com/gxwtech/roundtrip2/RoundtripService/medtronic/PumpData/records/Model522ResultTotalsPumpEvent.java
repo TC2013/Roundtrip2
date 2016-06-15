@@ -7,6 +7,11 @@ public class Model522ResultTotalsPumpEvent extends TimeStampedRecord {
     public Model522ResultTotalsPumpEvent() {}
 
     @Override
+    public String getShortTypeName() {
+        return "M522 Result Totals";
+    }
+
+    @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         return simpleParse(44,data,2);
     }

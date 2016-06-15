@@ -13,4 +13,9 @@ public class AlarmSensorPumpEvent extends TimeStampedRecord {
     public boolean parseFrom(byte[] data, PumpModel model) {
         return simpleParse(8,data,2);
     }
+
+    @Override
+    public String getShortTypeName() {
+        return "Alarm Sensor";
+    }
 }

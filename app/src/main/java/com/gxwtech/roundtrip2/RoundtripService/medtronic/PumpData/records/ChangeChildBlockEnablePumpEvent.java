@@ -5,4 +5,9 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
  */
 public class ChangeChildBlockEnablePumpEvent extends TimeStampedRecord {
     public ChangeChildBlockEnablePumpEvent(){}
+
+    @Override
+    public String getShortTypeName() {
+        return "Ch Child Block Ena";
+    }
 }

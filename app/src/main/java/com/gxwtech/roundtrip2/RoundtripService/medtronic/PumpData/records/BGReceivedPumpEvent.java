@@ -1,6 +1,8 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
+import android.os.Bundle;
+
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 
@@ -12,6 +14,11 @@ public class BGReceivedPumpEvent extends TimeStampedRecord {
     }
 
     @Override
+    public String getShortTypeName() {
+        return "BG Received";
+    }
+
+    @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         if (!super.simpleParse(10,data,2)) {
             return false;
@@ -19,5 +26,19 @@ public class BGReceivedPumpEvent extends TimeStampedRecord {
         amount = (asUINT8(data[1]) << 3) + (asUINT8(data[4])>>5);
         meter = ByteUtil.substring(data,7,3);
         return true;
+    }
+
+    @Override
+    public boolean readFromBundle(Bundle in) {
+        amount = in.getInt("amount");
+        meter = in.getByteArray("meter");
+        return super.readFromBundle(in);
+    }
+
+    @Override
+    public void writeToBundle(Bundle in) {
+        super.writeToBundle(in);
+        in.putInt("amount",amount);
+        in.putByteArray("meter",meter);
     }
 }

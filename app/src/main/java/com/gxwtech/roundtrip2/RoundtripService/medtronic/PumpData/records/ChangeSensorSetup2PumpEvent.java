@@ -9,6 +9,11 @@ public class ChangeSensorSetup2PumpEvent extends TimeStampedRecord {
     public ChangeSensorSetup2PumpEvent() {}
 
     @Override
+    public String getShortTypeName() {
+        return "Ch Sensor Setup2";
+    }
+
+    @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         return simpleParse(37,data,2);
     }

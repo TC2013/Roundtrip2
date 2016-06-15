@@ -1,5 +1,7 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
+import android.os.Bundle;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
@@ -31,6 +33,7 @@ public enum RecordTypeEnum {
     RECORD_TYPE_ENABLEDISABLEREMOTE((byte)0x26,EnableDisableRemotePumpEvent.class),
     RECORD_TYPE_TEMPBASALRATE((byte)0x33,TempBasalRatePumpEvent.class),
     RECORD_TYPE_LOWRESERVOIR((byte)0x34,JournalEntryPumpLowReservoirPumpEvent.class),
+    RECORD_TYPE_AlarmClockReminder((byte)0x35,AlarmClockReminderPumpEvent.class),
     RECORD_TYPE_BGRECEIVED((byte)0x3F,BGReceivedPumpEvent.class),
     RECORD_TYPE_JournalEntryExerciseMarker((byte)0x41,JournalEntryExerciseMarkerPumpEvent.class),
     RECORD_TYPE_CHANGESENSORSETUP2((byte)0x50,ChangeSensorSetup2PumpEvent.class),
@@ -85,7 +88,7 @@ public enum RecordTypeEnum {
     }
 
     private static final String TAG = "RecordTypeEnum";
-    public <T extends Record> T getRecordClass() {
+    public <T extends Record> T getRecordClassInstance() {
         Constructor<T> ctor;
         T record = null;
         try {
@@ -108,4 +111,11 @@ public enum RecordTypeEnum {
         }
         return record;
     }
+
+    public static <T extends Record> T getRecordClassInstance(Bundle bundle) {
+        byte opcode = bundle.getByte("_opcode");
+        RecordTypeEnum e = RecordTypeEnum.fromByte(opcode);
+        return e.getRecordClassInstance();
+    }
+
 }

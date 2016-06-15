@@ -5,4 +5,9 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
  */
 public class ChangeReservoirWarningTimePumpEvent extends TimeStampedRecord {
     public ChangeReservoirWarningTimePumpEvent(){}
+
+    @Override
+    public String getShortTypeName() {
+        return "Ch Res Warn Time";
+    }
 }

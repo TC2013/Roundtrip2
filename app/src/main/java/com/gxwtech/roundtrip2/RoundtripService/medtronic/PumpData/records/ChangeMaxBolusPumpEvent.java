@@ -5,4 +5,9 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
  */
 public class ChangeMaxBolusPumpEvent extends TimeStampedRecord {
     public ChangeMaxBolusPumpEvent() {}
+
+    @Override
+    public String getShortTypeName() {
+        return "Ch Max Bolux";
+    }
 }

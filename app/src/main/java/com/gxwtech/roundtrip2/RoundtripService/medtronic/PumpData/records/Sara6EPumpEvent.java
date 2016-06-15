@@ -9,6 +9,11 @@ public class Sara6EPumpEvent extends TimeStampedRecord {
     }
 
     @Override
+    public String getShortTypeName() {
+        return "Sara6E";
+    }
+
+    @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         length = 52;
         // We don't understand this event...

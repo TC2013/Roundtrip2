@@ -5,4 +5,9 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
  */
 public class ChangeBolusScrollStepSizePumpEvent extends TimeStampedRecord {
     public ChangeBolusScrollStepSizePumpEvent() {}
+
+    @Override
+    public String getShortTypeName() {
+        return "Ch Bolus Scroll SS";
+    }
 }

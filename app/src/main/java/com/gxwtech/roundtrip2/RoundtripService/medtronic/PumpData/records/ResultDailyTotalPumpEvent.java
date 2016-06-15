@@ -8,6 +8,11 @@ public class ResultDailyTotalPumpEvent extends TimeStampedRecord {
     }
 
     @Override
+    public String getShortTypeName() {
+        return "Result Daily Total";
+    }
+
+    @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         if (PumpModel.isLargerFormat(model)) {
             // record format changed with model number x23

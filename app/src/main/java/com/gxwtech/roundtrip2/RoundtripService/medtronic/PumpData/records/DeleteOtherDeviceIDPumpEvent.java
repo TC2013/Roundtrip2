@@ -9,6 +9,11 @@ public class DeleteOtherDeviceIDPumpEvent extends TimeStampedRecord {
     public DeleteOtherDeviceIDPumpEvent(){}
 
     @Override
+    public String getShortTypeName() {
+        return "Del Other Dev ID";
+    }
+
+    @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         return simpleParse(12,data,2);
     }

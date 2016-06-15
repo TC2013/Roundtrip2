@@ -5,4 +5,9 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
  */
 public class ChangeCaptureEventEnablePumpEvent extends TimeStampedRecord {
     public ChangeCaptureEventEnablePumpEvent() {}
+
+    @Override
+    public String getShortTypeName() {
+        return "Ch Capture Event Ena";
+    }
 }

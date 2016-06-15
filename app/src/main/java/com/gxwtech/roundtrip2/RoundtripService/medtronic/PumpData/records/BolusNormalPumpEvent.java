@@ -1,6 +1,8 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 
+import android.os.Bundle;
+
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpTimeStamp;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
@@ -15,6 +17,11 @@ public class BolusNormalPumpEvent extends TimeStampedRecord {
     private String bolusType = "Unset";
 
     public BolusNormalPumpEvent() {
+    }
+
+    @Override
+    public String getShortTypeName() {
+        return "Normal Bolus";
     }
 
     private double insulinDecode(int a, int b) {
@@ -46,8 +53,27 @@ public class BolusNormalPumpEvent extends TimeStampedRecord {
         }
 
         bolusType = (duration > 0) ? "square" : "normal";
-
         return true;
+    }
+
+    @Override
+    public boolean readFromBundle(Bundle in) {
+        programmedAmount = in.getDouble("programmedAmount",0.0);
+        deliveredAmount = in.getDouble("deliveredAmount",0.0);
+        duration = in.getInt("duration",0);
+        unabsorbedInsulinTotal = in.getDouble("unabsorbedInsulinTotal",0.0);
+        bolusType = in.getString("bolusType","Unset");
+        return super.readFromBundle(in);
+    }
+
+    @Override
+    public void writeToBundle(Bundle in) {
+        super.writeToBundle(in);
+        in.putDouble("programmedAmount",programmedAmount);
+        in.putDouble("deliveredAmount",deliveredAmount);
+        in.putInt("duration",duration);
+        in.putDouble("unabsorbedInsulinTotal",unabsorbedInsulinTotal);
+        in.putString("bolusType",bolusType);
     }
 
 }

@@ -9,6 +9,11 @@ public class ChangeTimePumpEvent extends TimeStampedRecord {
     }
 
     @Override
+    public String getShortTypeName() {
+        return "Change Time";
+    }
+
+    @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         return simpleParse(14,data,2);
     }

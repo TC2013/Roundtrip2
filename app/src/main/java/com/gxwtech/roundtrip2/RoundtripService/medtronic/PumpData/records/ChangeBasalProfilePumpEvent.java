@@ -8,6 +8,11 @@ public class ChangeBasalProfilePumpEvent extends TimeStampedRecord {
     }
 
     @Override
+    public String getShortTypeName() {
+        return "Ch Basal Profile";
+    }
+
+    @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
         return simpleParse(152,data,2);
     }
