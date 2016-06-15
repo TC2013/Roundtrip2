@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.gxwtech.roundtrip2">
 
-    <!--       Enable BLE and set it as mandatory -->
+    <!-- Enable BLE and set it as mandatory -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"
         android:required="true" />
@@ -17,19 +17,51 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 
     <application
+        android:name=".MainApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <meta-data
+            android:name="AA_MODELS"
+            android:value="com.gxwtech.roundtrip2.HappService.Objects.Treatment,                             com.gxwtech.roundtrip2.HappService.Objects.Basal" />
+        <meta-data
+            android:name="AA_DB_NAME"
+            android:value="pumpdriver.db" />
+        <!-- Also up date AA_DB_VERSION in MainActivity onCreate -->
+        <meta-data
+            android:name="AA_DB_VERSION"
+            android:value="1" />
+
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT" />
+                <action android:name="INSULIN_TREATMENT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
+        <receiver android:name=".AutoStart">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".HappService.HappIncomingService"
+            android:enabled="true"
+            android:exported="true"
+            android:process=":incoming_service_process">
+            <intent-filter>
+                <action android:name="com.gxwtech.roundtrip2.IncomingService"></action>
+            </intent-filter>
+        </service>
         <service
             android:name=".RoundtripService.RoundtripService"
             android:exported="false"
@@ -59,6 +91,7 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.gxwtech.roundtrip2.HistoryPageListActivity" />
         </activity>
+        <activity android:name=".TreatmentHistory"></activity>
     </application>
 
 </manifest>

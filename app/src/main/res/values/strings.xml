@@ -3,4 +3,7 @@
     <string name="roundtrip_service_name">RoundtripService</string>
     <string name="title_historypage_list">HistoryPages</string>
     <string name="title_historypage_detail">HistoryPage Detail</string>
+
+    <string name="drawer_open">Open navigation drawer</string>
+    <string name="drawer_close">Close navigation drawer</string>
 </resources>

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="80dp"
+    android:orientation="horizontal"
+    android:paddingTop="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:layout_marginTop="0dp">
+            <TextView
+                android:id="@+id/treatmentTypeLayout"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:textSize="16sp"
+                android:paddingRight="10dp"
+                android:text="Bolus"
+                android:gravity="bottom"
+                android:textColor="#000000" />
+            <TextView
+                android:id="@+id/treatmentValueLayout"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:height="20dp"
+                android:layout_weight="1"
+                android:textSize="16sp"
+                android:paddingRight="10dp"
+                android:text="Value"
+                android:gravity="bottom"
+                android:textColor="#000000" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginRight="16dp"
+                android:textSize="14sp"
+                android:id="@+id/treatmentDateTimeLayout"
+                android:text="00/00/00 00:00"
+                android:textColor="#000000"
+                android:gravity="top"/>
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:layout_marginTop="0dp">
+
+            <TextView
+                android:id="@+id/treatmentStateLayout"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:textSize="13sp"
+                android:text="state"
+                android:paddingRight="10dp"
+                android:layout_weight="1"
+                android:textColor="#000000" />
+            <TextView
+                android:id="@+id/treatmentDeliveredLayout"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:textSize="13sp"
+                android:text="delivered"
+                android:gravity="center_vertical"
+                android:layout_weight="1"
+                android:textColor="#000000" />
+            <TextView
+                android:id="@+id/treatmentRejectedLayout"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:textSize="13sp"
+                android:text="rejected"
+                android:gravity="center_vertical"
+                android:layout_weight="1"
+                android:textColor="#000000" />
+
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:layout_marginTop="0dp">
+
+            <TextView
+                android:id="@+id/treatmentDetailsLayout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:textSize="13sp"
+                android:text="details"
+                android:gravity="center_vertical"
+                android:layout_weight="1"
+                android:textColor="#000000" />
+
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:layout_marginTop="0dp">
+
+            <TextView
+                android:id="@+id/treatmentHAPPIDLayout"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:textSize="13sp"
+                android:text="HAPP ID"
+                android:layout_weight="1"
+                android:paddingRight="10dp"
+                android:textColor="#000000" />
+            <TextView
+                android:id="@+id/treatmentHAPPUpdateLayout"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:textSize="13sp"
+                android:text="HAPP Update"
+                android:gravity="center_vertical"
+                android:layout_weight="1"
+                android:textColor="#000000" />
+
+        </LinearLayout>
+    </LinearLayout>
+
+
+
+</LinearLayout>
