@@ -7,20 +7,17 @@ import android.content.IntentFilter;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.ViewPager;
-import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 
-import com.gxwtech.roundtrip2.HappService.Objects.Basal;
-import com.gxwtech.roundtrip2.HappService.Objects.Treatment;
+import com.gxwtech.roundtrip2.CommunicationService.Objects.Basal;
+import com.gxwtech.roundtrip2.CommunicationService.Objects.Treatment;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -163,15 +160,15 @@ public class TreatmentHistory extends AppCompatActivity {
                     treatmentItem.put("state", "State:" + treatment.state);
                     treatmentItem.put("delivered", "Delivered:" + treatment.delivered);
                     treatmentItem.put("rejected", "Rejected:" + treatment.rejected);
-                    treatmentItem.put("happ_id", "HAPP Integration ID:" + treatment.happ_int_id);
-                    treatmentItem.put("happ_update", "Update Needed:" + treatment.happ_update);
+                    treatmentItem.put("happ_id", "HAPP Integration ID:" + treatment.aps_int_id);
+                    treatmentItem.put("aps_update", "Update Needed:" + treatment.aps_update);
                     treatmentItem.put("details", treatment.details);
 
                     treatmentsList.add(treatmentItem);
                 }
 
                 SimpleAdapter adapter = new SimpleAdapter(MainApp.instance(), treatmentsList, R.layout.treatments_list_layout,
-                        new String[]{"type", "value", "dateTime", "state", "delivered", "rejected", "happ_id", "happ_update", "details"},
+                        new String[]{"type", "value", "dateTime", "state", "delivered", "rejected", "happ_id", "aps_update", "details"},
                         new int[]{R.id.treatmentTypeLayout, R.id.treatmentValueLayout, R.id.treatmentDateTimeLayout, R.id.treatmentStateLayout, R.id.treatmentDeliveredLayout, R.id.treatmentRejectedLayout, R.id.treatmentHAPPIDLayout, R.id.treatmentHAPPUpdateLayout, R.id.treatmentDetailsLayout});
                 list.setAdapter(adapter);
             }
@@ -211,15 +208,15 @@ public class TreatmentHistory extends AppCompatActivity {
                     basalItem.put("state", "State:" + basal.state);
                     basalItem.put("delivered", "Set:" + basal.been_set);
                     basalItem.put("rejected", "Rejected:" + basal.rejected);
-                    basalItem.put("happ_id", "HAPP Integration ID:" + basal.happ_int_id);
-                    basalItem.put("happ_update", "Update Needed:" + basal.happ_update);
+                    basalItem.put("happ_id", "HAPP Integration ID:" + basal.aps_int_id);
+                    basalItem.put("aps_update", "Update Needed:" + basal.aps_update);
                     basalItem.put("details", basal.details);
 
                     basalList.add(basalItem);
                 }
 
                 SimpleAdapter adapter = new SimpleAdapter(MainApp.instance(), basalList, R.layout.treatments_list_layout,
-                        new String[]{"type", "value", "dateTime", "state", "delivered", "rejected", "happ_id", "happ_update", "details"},
+                        new String[]{"type", "value", "dateTime", "state", "delivered", "rejected", "happ_id", "aps_update", "details"},
                         new int[]{R.id.treatmentTypeLayout, R.id.treatmentValueLayout, R.id.treatmentDateTimeLayout, R.id.treatmentStateLayout, R.id.treatmentDeliveredLayout, R.id.treatmentRejectedLayout, R.id.treatmentHAPPIDLayout, R.id.treatmentHAPPUpdateLayout, R.id.treatmentDetailsLayout});
                 list.setAdapter(adapter);
             }

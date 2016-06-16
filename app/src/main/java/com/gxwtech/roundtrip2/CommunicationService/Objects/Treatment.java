@@ -1,4 +1,4 @@
-package com.gxwtech.roundtrip2.HappService.Objects;
+package com.gxwtech.roundtrip2.CommunicationService.Objects;
 
 import android.provider.BaseColumns;
 
@@ -14,7 +14,7 @@ import java.util.List;
 
 /**
  * Created by Tim on 07/06/2016.
- * Logs treatments to local DB
+ * Logs treatments to local DB, currently only Bolues requests
  */
 @Table(name = "treatments", id = BaseColumns._ID)
 public class Treatment extends Model {
@@ -35,12 +35,12 @@ public class Treatment extends Model {
     public Boolean delivered;                   //Has the treatment been delivered?
     @Column(name = "rejected")
     public Boolean rejected;                    //Has the treatment been rejected and should never be processed?
-    @Column(name = "happ_int_id")
-    public Long  happ_int_id;                   //Integration ID provided by HAPP
-    @Column(name = "happ_update")
-    public Boolean happ_update;                 //Do we need to update HAPP of a change?
+    @Column(name = "aps_int_id")
+    public Long  aps_int_id;                    //Integration ID provided by APS app
+    @Column(name = "aps_update")
+    public Boolean aps_update;                  //Do we need to update APS app of a change?
     @Column(name = "auth_code")
-    public String  auth_code;                   //UID of this Treatments Integration requested provided by HAPP, used to authenticate with HAPP when updating this treatment
+    public String  auth_code;                   //UID of this Treatments Integration requested provided by APS app, used to authenticate with APS app when updating this treatment
 
     public Treatment() {
         type            = "";
@@ -51,8 +51,8 @@ public class Treatment extends Model {
         details         = "";
         delivered       = false;
         rejected        = false;
-        happ_int_id     = null;
-        happ_update     = false;
+        aps_int_id      = null;
+        aps_update      = false;
         auth_code       = null;
     }
 
@@ -73,10 +73,10 @@ public class Treatment extends Model {
                 .execute();
     }
 
-    public static List<Treatment> getToUpdateHAPP() {
+    public static List<Treatment> getToUpdateAPSApp() {
         return new Select()
                 .from(Treatment.class)
-                .where("happ_update = 1") //true
+                .where("aps_update = 1") //true
                 .orderBy("date_requested desc")
                 .execute();
     }
@@ -93,7 +93,7 @@ public class Treatment extends Model {
         JSONObject reply = new JSONObject();
 
         try {
-            reply.put("HAPP_INT_ID", treatment.happ_int_id);
+            reply.put("APS_INT_ID", treatment.aps_int_id);
             reply.put("STATE", treatment.state);
             reply.put("DETAILS", treatment.details);
             reply.put("INTEGRATION_CODE", treatment.auth_code);

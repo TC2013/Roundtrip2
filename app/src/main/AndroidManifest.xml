@@ -54,10 +54,10 @@
         </receiver>
 
         <service
-            android:name=".HappService.HappIncomingService"
+            android:name=".CommunicationService.CommunicationService"
             android:enabled="true"
             android:exported="true"
-            android:process=":incoming_service_process">
+            android:process=":CommunicationService">
             <intent-filter>
                 <action android:name="com.gxwtech.roundtrip2.IncomingService"></action>
             </intent-filter>

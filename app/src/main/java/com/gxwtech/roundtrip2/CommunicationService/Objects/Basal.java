@@ -1,4 +1,4 @@
-package com.gxwtech.roundtrip2.HappService.Objects;
+package com.gxwtech.roundtrip2.CommunicationService.Objects;
 
 import android.provider.BaseColumns;
 
@@ -12,18 +12,19 @@ import java.util.List;
 
 /**
  * Created by Tim on 07/06/2016.
+ * Basal Object request
  */
 @Table(name = "basal", id = BaseColumns._ID)
 public class Basal extends Model {
 
     @Column(name = "rate")
-    public Double   rate;                   //Temp Basal Rate for (U/hr) mode
+    public Double   rate;                       //Temp Basal Rate for (U/hr) mode
     @Column(name = "ratePercent")
-    public Integer  ratePercent;            //Temp Basal Rate for "percent" of normal basal
+    public Integer  ratePercent;                //Temp Basal Rate for "percent" of normal basal
     @Column(name = "duration")
-    public Integer  duration;               //Duration of Temp
+    public Integer  duration;                   //Duration of Temp
     @Column(name = "start_time")
-    public Date start_time;                 //When the Temp Basal started
+    public Date start_time;                     //When the Temp Basal started
 
     @Column(name = "action")
     public String  action;                      //new / cancel
@@ -32,15 +33,15 @@ public class Basal extends Model {
     @Column(name = "details")
     public String  details;                     //Any details of actioning this basal
     @Column(name = "been_set")
-    public Boolean been_set;                         //Has the basal been set?
+    public Boolean been_set;                    //Has the basal been set?
     @Column(name = "rejected")
     public Boolean rejected;                    //Has the basal been rejected and should never be processed?
-    @Column(name = "happ_int_id")
-    public Long  happ_int_id;                   //Integration ID provided by HAPP
-    @Column(name = "happ_update")
-    public Boolean happ_update;                 //Do we need to update HAPP of a change?
+    @Column(name = "aps_int_id")
+    public Long  aps_int_id;                    //Integration ID provided by APS app
+    @Column(name = "aps_update")
+    public Boolean aps_update;                  //Do we need to update APS app of a change?
     @Column(name = "auth_code")
-    public String  auth_code;                   //UID of this Integration requested provided by HAPP, used to authenticate with HAPP when updating
+    public String  auth_code;                   //UID of this Integration requested provided by APS app, used to authenticate with APS app when updating
 
     public Basal() {
         rate            = 0D;
@@ -53,8 +54,8 @@ public class Basal extends Model {
         details         = "";
         been_set        = false;
         rejected        = false;
-        happ_int_id     = null;
-        happ_update     = false;
+        aps_int_id      = null;
+        aps_update      = false;
         auth_code       = null;
     }
 
@@ -90,7 +91,7 @@ public class Basal extends Model {
     public static List<Basal> getToUpdateHAPP() {
         return new Select()
                 .from(Basal.class)
-                .where("happ_update = 1") //true
+                .where("aps_update = 1") //true
                 .orderBy("start_time desc")
                 .execute();
     }

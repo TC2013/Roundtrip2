@@ -2,14 +2,12 @@ package com.gxwtech.roundtrip2;
 
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.res.Resources;
-import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -17,12 +15,8 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.GravityCompat;
-import android.support.v4.view.ViewPager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
@@ -42,23 +36,13 @@ import android.widget.TextView;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 import android.widget.ListView;
-import android.widget.SimpleAdapter;
 
 
-import com.activeandroid.ActiveAndroid;
-import com.activeandroid.Configuration;
-import com.gxwtech.roundtrip2.HappService.HappIncomingService;
-import com.gxwtech.roundtrip2.HappService.Objects.Basal;
-import com.gxwtech.roundtrip2.HappService.Objects.Treatment;
+import com.gxwtech.roundtrip2.CommunicationService.CommunicationService;
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
 import com.gxwtech.roundtrip2.util.tools;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -67,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
     private RoundtripServiceClientConnection roundtripServiceClientConnection;
     private BroadcastReceiver mBroadcastReceiver;
 
-    BroadcastReceiver happConnected;
+    BroadcastReceiver apsAppConnected;
 
     //used by HAPP Service to get app instance
     Bundle storeForHistoryViewer;
@@ -156,8 +140,8 @@ public class MainActivity extends AppCompatActivity {
         // bind to the service for ease of message passing.
         doBindService();
 
-        //Make sure HAPP BackgroundService is running, as this maybe first run
-        startService(new Intent(this, HappIncomingService.class));
+        //Make sure CommunicationService is running, as this maybe first run
+        startService(new Intent(this, CommunicationService.class));
     }
 
     @Override
@@ -179,8 +163,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onPause() {
         super.onPause();
-        if (happConnected != null){
-            LocalBroadcastManager.getInstance(MainApp.instance()).unregisterReceiver(happConnected);
+        if (apsAppConnected != null){
+            LocalBroadcastManager.getInstance(MainApp.instance()).unregisterReceiver(apsAppConnected);
         }
     }
 
@@ -406,7 +390,7 @@ public class MainActivity extends AppCompatActivity {
     public void sendHappMessage(final View view)
     {
         //listen out for a successful connection
-        happConnected = new BroadcastReceiver() {
+        apsAppConnected = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
 
@@ -429,11 +413,11 @@ public class MainActivity extends AppCompatActivity {
                     snackbar.show();
                 }
 
-                if (happConnected != null) LocalBroadcastManager.getInstance(MainApp.instance()).unregisterReceiver(happConnected); //Stop listening for new connections
+                if (apsAppConnected != null) LocalBroadcastManager.getInstance(MainApp.instance()).unregisterReceiver(apsAppConnected); //Stop listening for new connections
                 MainApp.instance().unbindService(myConnection);
             }
         };
-        LocalBroadcastManager.getInstance(MainApp.instance()).registerReceiver(happConnected, new IntentFilter("HAPP_CONNECTED"));
+        LocalBroadcastManager.getInstance(MainApp.instance()).registerReceiver(apsAppConnected, new IntentFilter("HAPP_CONNECTED"));
 
         connect_to_HAPP(MainApp.instance());
     }
