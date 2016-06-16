@@ -153,7 +153,7 @@ public class CommunicationService extends android.app.Service {
 
             if (Check.IsBolusSafeToAction(bolus)) {
 
-                String actionResult = "";                                                           // TODO: 16/01/2016 a function should be here to action the treatment and get result
+                String actionResult = "delivered";                                                  // TODO: 16/01/2016 a function should be here to action the treatment and get result
 
                 if (actionResult.equals("delivered")) {
                     bolus.state         =   "delivered";
@@ -191,20 +191,20 @@ public class CommunicationService extends android.app.Service {
                 switch (recentRequest.action) {
                     case "new":
 
-                        actionResult = "";                                                          // TODO: 16/01/2016 a function should be here to action the TBR and get result
+                        actionResult = "set";                                                       // TODO: 16/01/2016 a function should be here to action the TBR and get result
 
                         if (actionResult.equals("set")) {
                             recentRequest.state         =   "set";
                             recentRequest.details       =   "Temp Basal Set " + recentRequest.rate + "U (" + recentRequest.ratePercent + "%)";
                             recentRequest.been_set      =   true;
-                            recentRequest.aps_update   =   true;
+                            recentRequest.aps_update    =   true;
                             recentRequest.save();
                         } else {
                             recentRequest.state         =   "error";
                             recentRequest.details       =   actionResult;
                             recentRequest.been_set      =   false;
                             recentRequest.rejected      =   true;
-                            recentRequest.aps_update   =   true;
+                            recentRequest.aps_update    =   true;
                             recentRequest.save();
                         }
 
@@ -212,19 +212,19 @@ public class CommunicationService extends android.app.Service {
 
                     case "cancel":
 
-                        actionResult = "";                                                          // TODO: 16/01/2016 a function should be here to action the TBR and get result
+                        actionResult = "canceled";                                                  // TODO: 16/01/2016 a function should be here to action the TBR and get result
 
                         if (actionResult.equals("canceled")) {
                             recentRequest.state         =   "canceled";
                             recentRequest.details       =   "This Temp Basal was running and has now been Canceled";
                             recentRequest.been_set      =   true;
-                            recentRequest.aps_update   =   true;
+                            recentRequest.aps_update    =   true;
                             recentRequest.save();
                         } else {
                             recentRequest.state         =   "error";
                             recentRequest.details       =   actionResult;
                             recentRequest.been_set      =   false;
-                            recentRequest.aps_update   =   true;
+                            recentRequest.aps_update    =   true;
                             recentRequest.rejected      =   true;
                             recentRequest.save();
                         }

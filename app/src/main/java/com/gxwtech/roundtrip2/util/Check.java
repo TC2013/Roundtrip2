@@ -12,12 +12,13 @@ import java.util.Date;
  */
 public class Check {
     final static int MaxTreatmentAgeInMins = 10;
+    final static boolean DEBUG = true;
 
     public static String NewObjectToSync(ObjectToSync objectToSync){
         // New incoming object to sync, checks we are happy to accept
         String result = "";
 
-        result  +=  PumpSupported(objectToSync);
+        result  +=  isPumpSupported(objectToSync);
 
         // TODO: 21/02/2016 perform other checks here, return empty string for OK or text detailing the issue
 
@@ -43,7 +44,7 @@ public class Check {
 
             case "new":
 
-                if (RequestIsTooOld(basal.start_time.getTime())){
+                if (isRequestIsTooOld(basal.start_time.getTime())){
                     basal.state         = "error";
                     basal.details       = "NEW Basal Request is older than 10mins, too old to be set";
                     basal.been_set      = false;
@@ -60,7 +61,7 @@ public class Check {
 
             case "cancel":
 
-                if (!IsThisBasalLastActioned(basal)) {
+                if (!isThisBasalLastActioned(basal)) {
                     basal.state         =   "error";
                     basal.details       =   "Current Running Temp Basal does not match this Cancel request, Temp Basal has not been canceled";
                     basal.been_set      =   false;
@@ -82,7 +83,7 @@ public class Check {
     public static boolean IsBolusSafeToAction(Treatment bolus){
         //Are we happy to Action this requested Bolus request
 
-        if (RequestIsTooOld(bolus.date_requested)) {
+        if (isRequestIsTooOld(bolus.date_requested)) {
             bolus.state         =   "error";
             bolus.details       =   "Treatment is older than 10mins, too old to be automated";
             bolus.delivered     =   false;
@@ -105,13 +106,12 @@ public class Check {
             return false;
         }
 
-        if (bolus.value == 1.1){
-            // TODO: 14/02/2016 This must be removed in production
+        if (bolus.value == 1.1 && DEBUG){
             bolus.state         =   "error";
             bolus.details       =   "test error as value = 1.1";
             bolus.delivered     =   false;
             bolus.rejected      =   true;
-            bolus.aps_update   =   true;
+            bolus.aps_update    =   true;
             bolus.save();
 
             return false;
@@ -122,8 +122,10 @@ public class Check {
         return true;                                                                                //All good to action
     }
 
-    private static String PumpSupported(ObjectToSync objectToSync){
+    private static String isPumpSupported(ObjectToSync objectToSync){
         //Do we support the pump requested?
+        if (DEBUG) return "";
+
         switch (objectToSync.value4){
             case "medtronic_absolute":
             case "medtronic_percent":
@@ -133,7 +135,7 @@ public class Check {
         }
     }
 
-    private static boolean RequestIsTooOld(Long date){
+    private static boolean isRequestIsTooOld(Long date){
         //Is this request too old to action?
         Long ageInMins = (new Date().getTime() - date) /1000/60;
         if (ageInMins > MaxTreatmentAgeInMins){
@@ -143,7 +145,7 @@ public class Check {
         }
     }
 
-    private static boolean IsThisBasalLastActioned(Basal basal){
+    private static boolean isThisBasalLastActioned(Basal basal){
         //Is this Basal the most recent one set to the pump?
         Basal lastActive        =   Basal.lastActive();                                             //Basal that is active or last active
 

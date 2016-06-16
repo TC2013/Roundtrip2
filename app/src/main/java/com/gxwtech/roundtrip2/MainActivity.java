@@ -296,21 +296,21 @@ public class MainActivity extends AppCompatActivity {
         Drawable historyIcon            = getDrawable(R.drawable.history);
         Drawable settingsIcon           = getDrawable(R.drawable.settings);
         Drawable catIcon                = getDrawable(R.drawable.cat);
-        Drawable happIcon                = getDrawable(R.drawable.refresh);
+        Drawable apsIcon                = getDrawable(R.drawable.refresh);
 
         logsIcon.setColorFilter(getResources().getColor(R.color.primary_dark), PorterDuff.Mode.SRC_ATOP);
         historyIcon.setColorFilter(getResources().getColor(R.color.primary_dark), PorterDuff.Mode.SRC_ATOP);
         settingsIcon.setColorFilter(getResources().getColor(R.color.primary_dark), PorterDuff.Mode.SRC_ATOP);
         catIcon.setColorFilter(getResources().getColor(R.color.primary_dark), PorterDuff.Mode.SRC_ATOP);
-        happIcon.setColorFilter(getResources().getColor(R.color.primary_dark), PorterDuff.Mode.SRC_ATOP);
+        apsIcon.setColorFilter(getResources().getColor(R.color.primary_dark), PorterDuff.Mode.SRC_ATOP);
 
         ListView mDrawerList            = (ListView)findViewById(R.id.navList);
         ArrayList<NavItem> menuItems    = new ArrayList<>();
+        menuItems.add(new NavItem("APS Integration", apsIcon));
         menuItems.add(new NavItem("Pump History", historyIcon));
         menuItems.add(new NavItem("Treatment Logs", logsIcon));
         menuItems.add(new NavItem("Settings", settingsIcon));
         menuItems.add(new NavItem("View LogCat", catIcon));
-        menuItems.add(new NavItem("Check HAPP Connectivity", happIcon));
         DrawerListAdapter adapterMenu = new DrawerListAdapter(this, menuItems);
         mDrawerList.setAdapter(adapterMenu);
         mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -318,24 +318,24 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 switch (position) {
                     case 0:
+                        //Check APS App Connectivity
+                        sendAPSAppMessage(view);
+                        break;
+                    case 1:
                         //Pump History
                         sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchHistory);
                         break;
-                    case 1:
+                    case 2:
                         //Treatment Logs
                         startActivity(new Intent(getApplicationContext(), TreatmentHistory.class));
                         break;
-                    case 2:
+                    case 3:
                         //Settings
                         //startActivity(new Intent(getApplicationContext(), SettingsActivity.class));
                         break;
-                    case 3:
+                    case 4:
                         //View LogCat
                         tools.showLogging();
-                        break;
-                    case 4:
-                        //Check HAPP Connectivity
-                        sendHappMessage(view);
                         break;
                 }
                 mDrawerLayout.closeDrawers();
@@ -367,16 +367,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    /* Functions for Happ Service */
+    /* Functions for APS App Service */
 
-    //Our Service that HAPP will connect to
+    //Our Service that APS App will connect to
     private Messenger myService = null;
     private ServiceConnection myConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
             myService = new Messenger(service);
 
             //Broadcast there has been a connection
-            Intent intent = new Intent("HAPP_CONNECTED");
+            Intent intent = new Intent("APS_CONNECTED");
             //LocalBroadcastManager.getInstance(MainApp.instance()).sendBroadcast(intent);
             LocalBroadcastManager.getInstance(MainApp.instance()).sendBroadcast(intent); // TODO: 07/06/2016 ok?
         }
@@ -387,7 +387,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    public void sendHappMessage(final View view)
+    public void sendAPSAppMessage(final View view)
     {
         //listen out for a successful connection
         apsAppConnected = new BroadcastReceiver() {
@@ -417,13 +417,14 @@ public class MainActivity extends AppCompatActivity {
                 MainApp.instance().unbindService(myConnection);
             }
         };
-        LocalBroadcastManager.getInstance(MainApp.instance()).registerReceiver(apsAppConnected, new IntentFilter("HAPP_CONNECTED"));
+        LocalBroadcastManager.getInstance(MainApp.instance()).registerReceiver(apsAppConnected, new IntentFilter("APS_CONNECTED"));
 
-        connect_to_HAPP(MainApp.instance());
+        connect_to_aps_app(MainApp.instance());
     }
 
-    //Connect to the HAPP Treatments Service
-    private void connect_to_HAPP(Context c){
+    //Connect to the APS App Treatments Service
+    private void connect_to_aps_app(Context c){
+        // TODO: 16/06/2016 add user selected aps app
         Intent intent = new Intent("com.hypodiabetic.happ.services.TreatmentService");
         intent.setPackage("com.hypodiabetic.happ");
         c.bindService(intent, myConnection, Context.BIND_AUTO_CREATE);
