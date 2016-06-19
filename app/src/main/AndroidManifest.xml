@@ -42,7 +42,9 @@
             </intent-filter>
             <intent-filter>
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <action android:name="INSULIN_TREATMENT" />
+
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
@@ -59,7 +61,7 @@
             android:exported="true"
             android:process=":CommunicationService">
             <intent-filter>
-                <action android:name="com.gxwtech.roundtrip2.IncomingService"></action>
+                <action android:name="com.gxwtech.roundtrip2.IncomingService" />
             </intent-filter>
         </service>
         <service
@@ -91,7 +93,10 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.gxwtech.roundtrip2.HistoryPageListActivity" />
         </activity>
-        <activity android:name=".TreatmentHistory"></activity>
+        <activity android:name=".TreatmentHistory" />
+        <activity
+            android:name=".SettingsActivity"
+            android:label="@string/title_activity_settings"></activity>
     </application>
 
 </manifest>

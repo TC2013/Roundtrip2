@@ -6,4 +6,18 @@
 
     <string name="drawer_open">Open navigation drawer</string>
     <string name="drawer_close">Close navigation drawer</string>
+    <string name="title_activity_settings">Settings</string>
+
+
+    <!-- Strings related to Settings -->
+    <string name="pref_pump_id">Pump ID</string>
+    <string name="pref_user_max_bolus">Max Bolus</string>
+    <string name="pref_user_max_basal_rate">Max Basal Rate</string>
+    <string name="pref_user_max_basal_duration">Max Basal Duration</string>
+    <string name="pref_pump_prefs">Pump</string>
+    <string name="pref_rileylink_prefs">RileyLink</string>
+    <string name="pref_rileylink_ble_id">RileyLink BLE ID</string>
+
+
+
 </resources>

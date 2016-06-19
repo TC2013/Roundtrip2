@@ -30,7 +30,7 @@ dependencies {
     compile 'joda-time:joda-time:2.5'
     compile 'com.michaelpardo:activeandroid:3.1.0-SNAPSHOT'
     compile 'com.google.code.gson:gson:2.4'
-    compile 'com.android.support:design:23.1.0'
+    compile 'com.android.support:design:23.4.0'
     compile 'com.android.support:support-v4:23.4.0'
     compile 'com.android.support:recyclerview-v7:23.4.0'
 }

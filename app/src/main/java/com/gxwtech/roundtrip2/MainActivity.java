@@ -331,7 +331,7 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case 3:
                         //Settings
-                        //startActivity(new Intent(getApplicationContext(), SettingsActivity.class));
+                        startActivity(new Intent(getApplicationContext(), SettingsActivity.class));
                         break;
                     case 4:
                         //View LogCat

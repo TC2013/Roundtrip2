@@ -66,7 +66,7 @@ public class CommunicationService extends android.app.Service {
                     case "TEST_MSG":
                         Resources appR = MainApp.instance().getResources();
                         CharSequence txt = appR.getText(appR.getIdentifier("app_name", "string", MainApp.instance().getPackageName()));
-                        Toast.makeText(MainApp.instance(), txt + ": APS app has connected successfully. ", Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainApp.instance(), txt + ": Pump Driver App has connected successfully. ", Toast.LENGTH_LONG).show();
                         Log.d(TAG,txt + ": APS app has connected successfully.");
 
                         break;
