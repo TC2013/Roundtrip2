@@ -6,8 +6,8 @@
     android:name="com.gxwtech.roundtrip2.HistoryPageListFragment"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_marginLeft="16dp"
-    android:layout_marginRight="16dp"
     app:layoutManager="LinearLayoutManager"
     tools:context="com.gxwtech.roundtrip2.HistoryPageListActivity"
-    tools:listitem="@layout/historypage_list_content" />
+    tools:listitem="@layout/historypage_list_content"
+    android:background="@color/primary_light"
+    android:foreground="@color/primary_dark"/>

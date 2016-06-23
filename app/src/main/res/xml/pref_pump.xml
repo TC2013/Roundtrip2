@@ -2,8 +2,8 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
     <EditTextPreference
-        android:defaultValue=""
-        android:key="pref_pump_id"
+        android:defaultValue="0000"
+        android:key="com.gxwtech.roundtrip2.serviceLocal.PumpIDKey"
         android:maxLines="1"
         android:selectAllOnFocus="true"
         android:singleLine="true"

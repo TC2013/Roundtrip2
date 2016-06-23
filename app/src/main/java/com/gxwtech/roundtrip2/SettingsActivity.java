@@ -5,21 +5,14 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.graphics.PorterDuff;
-import android.graphics.drawable.Drawable;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBar;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
-import android.preference.RingtonePreference;
-import android.text.TextUtils;
 import android.view.MenuItem;
 
 import java.util.List;
@@ -54,6 +47,11 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
                     break;
                 case "pref_user_max_basal_duration":
                     preference.setSummary(stringValue + "mins");
+                    break;
+                case RT2Const.serviceLocal.pumpIDKey:
+                    preference.setSummary(stringValue);
+                    //Notify that we have a new pumpIDKey
+                    LocalBroadcastManager.getInstance(MainApp.instance()).sendBroadcast(new Intent(RT2Const.local.INTENT_NEW_pumpIDKey));
                     break;
                 default:
                     // For all other preferences, set the summary to the value's
@@ -151,18 +149,15 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             addPreferencesFromResource(R.xml.pref_pump);
             setHasOptionsMenu(true);
 
-            Drawable icon                = getResources().getDrawable(R.drawable.tablet);
-            icon.setColorFilter(getResources().getColor(R.color.primary_dark), PorterDuff.Mode.SRC_ATOP);
-            // TODO: 19/06/2016 set icon color
-
             // Bind the summaries of EditText/List/Dialog/Ringtone preferences
             // to their values. When their values change, their summaries are
             // updated to reflect the new value, per the Android Design
             // guidelines.
-            bindPreferenceSummaryToValue(findPreference("pref_pump_id"));
+            bindPreferenceSummaryToValue(findPreference(RT2Const.serviceLocal.pumpIDKey));
             bindPreferenceSummaryToValue(findPreference("pref_user_max_bolus"));
             bindPreferenceSummaryToValue(findPreference("pref_user_max_basal_rate"));
             bindPreferenceSummaryToValue(findPreference("pref_user_max_basal_duration"));
+
         }
 
         @Override
@@ -188,8 +183,15 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             // to their values. When their values change, their summaries are
             // updated to reflect the new value, per the Android Design
             // guidelines.
-            //bindPreferenceSummaryToValue(findPreference("example_text"));
-            //bindPreferenceSummaryToValue(findPreference("example_list"));
+            bindPreferenceSummaryToValue(findPreference(RT2Const.serviceLocal.rileylinkAddressKey));
+            Preference rileylink_ble = findPreference(RT2Const.serviceLocal.rileylinkAddressKey);
+            rileylink_ble.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(Preference preference) {
+                    startActivity(new Intent(MainApp.instance(), RileyLinkScan.class));
+                    return true;
+                }
+            });
         }
 
         @Override

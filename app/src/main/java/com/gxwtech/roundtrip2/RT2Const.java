@@ -57,6 +57,9 @@ public class RT2Const {
         // These are local to the GUI activities
         public static final String Prefix = RT2Prefix + "local.";
         public static final String INTENT_serviceConnected = Prefix + "INTENT_serviceConnected";
+        public static final String INTENT_NEW_rileylinkAddressKey = Prefix + "INTENT_NEW_rileylinkAddressKey";
+        public static final String INTENT_NEW_pumpIDKey = Prefix + "INTENT_NEW_pumpIDKey";
+
 
         public static final String INTENT_historyPageViewerReady = Prefix + "I'm ready, hit me up";
         public static final String INTENT_historyPageBundleIncoming = Prefix + "Here's the kitchen sink";

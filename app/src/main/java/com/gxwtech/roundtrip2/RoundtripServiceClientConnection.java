@@ -101,20 +101,22 @@ public class RoundtripServiceClientConnection {
 
     public boolean sendMessage(Bundle bundle) {
         if (!mBound) {
-            Log.e(TAG,"sendMessage: cannot send message -- not yet bound to service");
-        }
-        // Create a Message
-        Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC, 0, 0);
-        // Set payload
-        msg.setData(bundle);
-        msg.replyTo = mMessenger;
-        // Send the Message to the Service (in another process)
-        try {
-            mService.send(msg);
-        } catch (RemoteException e) {
-            e.printStackTrace();
+            Log.e(TAG, "sendMessage: cannot send message -- not yet bound to service");
             return false;
+        } else {
+            // Create a Message
+            Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC, 0, 0);
+            // Set payload
+            msg.setData(bundle);
+            msg.replyTo = mMessenger;
+            // Send the Message to the Service (in another process)
+            try {
+                mService.send(msg);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+                return false;
+            }
+            return true;
         }
-        return true;
     }
 }
