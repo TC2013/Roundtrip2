@@ -12,6 +12,9 @@ public class TempBasalRatePumpEvent extends TimeStampedRecord {
     public TempBasalRatePumpEvent() { }
 
     @Override
+    public int getLength() { return 8; }
+
+    @Override
     public String getShortTypeName() {
         return "Temp Basal Rate";
     }
@@ -21,7 +24,7 @@ public class TempBasalRatePumpEvent extends TimeStampedRecord {
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
-        if (!simpleParse(8,data,2)) {
+        if (!simpleParse(data,2)) {
             return false;
         }
         if ((asUINT8(data[7])>>3)==0) {

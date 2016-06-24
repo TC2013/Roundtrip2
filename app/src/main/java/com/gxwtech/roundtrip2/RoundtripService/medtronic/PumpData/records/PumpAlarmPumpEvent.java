@@ -11,13 +11,16 @@ public class PumpAlarmPumpEvent extends TimeStampedRecord {
     }
 
     @Override
+    public int getLength() { return 9; }
+
+    @Override
     public String getShortTypeName() {
         return "Pump Alarm";
     }
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
-        if (!simpleParse(9,data,4)) {
+        if (!simpleParse(data,4)) {
             return false;
         }
         rawtype = asUINT8(data[1]);

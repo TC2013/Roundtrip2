@@ -43,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
                         Intent intent;
 
                         if (RT2Const.local.INTENT_serviceConnected.equals(action)) {
+
                             sendPUMP_useThisDevice("518163");
                             sendBLEuseThisDevice("00:07:80:2D:9E:F4"); // for automated testing
                         } else if (RT2Const.IPC.MSG_BLE_RileyLinkReady.equals(action)) {

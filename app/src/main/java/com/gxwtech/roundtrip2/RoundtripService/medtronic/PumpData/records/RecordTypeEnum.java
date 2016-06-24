@@ -2,6 +2,8 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
 import android.os.Bundle;
 
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
@@ -88,7 +90,7 @@ public enum RecordTypeEnum {
     }
 
     private static final String TAG = "RecordTypeEnum";
-    public <T extends Record> T getRecordClassInstance() {
+    public <T extends Record> T getRecordClassInstance(PumpModel model) {
         Constructor<T> ctor;
         T record = null;
         try {
@@ -97,6 +99,7 @@ public enum RecordTypeEnum {
                 ctor = recordClass().getConstructor();
                 if (ctor != null) {
                     record = ctor.newInstance();
+                    record.setPumpModel(model);
                 }
             }
         } catch (NoSuchMethodException e) {
@@ -112,10 +115,10 @@ public enum RecordTypeEnum {
         return record;
     }
 
-    public static <T extends Record> T getRecordClassInstance(Bundle bundle) {
+    public static <T extends Record> T getRecordClassInstance(Bundle bundle, PumpModel model) {
         byte opcode = bundle.getByte("_opcode");
         RecordTypeEnum e = RecordTypeEnum.fromByte(opcode);
-        return e.getRecordClassInstance();
+        return e.getRecordClassInstance(model);
     }
 
 }

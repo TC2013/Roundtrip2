@@ -1,19 +1,15 @@
 package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 
-
-import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
-
 public class ChangeBasalProfilePumpEvent extends TimeStampedRecord {
     public ChangeBasalProfilePumpEvent() {
     }
+
+    @Override
+    public int getLength() { return 152; }
 
     @Override
     public String getShortTypeName() {
         return "Ch Basal Profile";
     }
 
-    @Override
-    public boolean parseFrom(byte[] data, PumpModel model) {
-        return simpleParse(152,data,2);
-    }
 }

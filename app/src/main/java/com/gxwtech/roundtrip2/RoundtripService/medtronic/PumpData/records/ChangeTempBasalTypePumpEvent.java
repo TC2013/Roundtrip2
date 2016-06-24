@@ -18,7 +18,7 @@ public class ChangeTempBasalTypePumpEvent extends TimeStampedRecord {
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
-        if (!simpleParse(7,data,2)) {
+        if (!simpleParse(data,2)) {
             return false;
         }
         if (asUINT8(data[1])==1) {

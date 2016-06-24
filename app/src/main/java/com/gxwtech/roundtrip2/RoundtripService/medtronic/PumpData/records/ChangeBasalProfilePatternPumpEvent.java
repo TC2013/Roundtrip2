@@ -9,12 +9,13 @@ public class ChangeBasalProfilePatternPumpEvent extends TimeStampedRecord {
     public ChangeBasalProfilePatternPumpEvent() {}
 
     @Override
+    public int getLength() {
+        return 152;
+    }
+
+    @Override
     public String getShortTypeName() {
         return "Ch Basal Prof Pat";
     }
 
-    @Override
-    public boolean parseFrom(byte[] data, PumpModel model) {
-        return simpleParse(152,data,2);
-    }
 }

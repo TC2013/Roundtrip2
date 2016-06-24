@@ -14,13 +14,16 @@ public class PrimePumpEvent extends TimeStampedRecord {
     }
 
     @Override
+    public int getLength() { return 10; }
+
+    @Override
     public String getShortTypeName() {
         return "Prime Pump";
     }
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
-        if (!simpleParse(10,data,5)) {
+        if (!simpleParse(data,5)) {
             return false;
         }
         amount = (double)(asUINT8(data[4])<<2) / 40.0;

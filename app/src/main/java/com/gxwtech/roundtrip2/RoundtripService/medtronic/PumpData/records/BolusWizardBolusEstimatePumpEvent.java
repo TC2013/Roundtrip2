@@ -32,6 +32,9 @@ public class BolusWizardBolusEstimatePumpEvent extends TimeStampedRecord {
     }
 
     @Override
+    public int getLength() { return PumpModel.isLargerFormat(model) ? 22 : 20;}
+
+    @Override
     public String getShortTypeName() {
         return "Bolus Wizard Est.";
     }
@@ -83,12 +86,7 @@ public class BolusWizardBolusEstimatePumpEvent extends TimeStampedRecord {
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
-        if (PumpModel.isLargerFormat(model)) {
-            length = 22;
-        } else if (model.ordinal() >= PumpModel.MM523.ordinal()) {
-            length = 20;
-        }
-        if (!simpleParse(length,data,2)) {
+        if (!simpleParse(data,2)) {
             return false;
         }
         if (PumpModel.isLargerFormat(model)) {

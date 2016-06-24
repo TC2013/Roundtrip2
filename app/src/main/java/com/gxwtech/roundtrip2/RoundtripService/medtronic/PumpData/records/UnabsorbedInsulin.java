@@ -5,11 +5,16 @@ import android.os.Bundle;
 import android.util.Log;
 
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
+import com.gxwtech.roundtrip2.util.ByteUtil;
 
 import java.util.ArrayList;
 
 public class UnabsorbedInsulin extends Record {
     private static final String TAG = "UnabsorbedInsulin";
+    private int length = 2;
+
+    @Override
+    public int getLength() { return length; /* this is a variable sized record */}
 
     @Override
     public String getShortTypeName() {
@@ -32,6 +37,9 @@ public class UnabsorbedInsulin extends Record {
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
+        if (data.length < 2) {
+            return false;
+        }
         length = asUINT8(data[1]);
         if (length < 2) {
             length = 2;
@@ -39,13 +47,14 @@ public class UnabsorbedInsulin extends Record {
         if (length > data.length) {
             return false;
         }
+
         int numRecords = (asUINT8(data[1]) - 2) / 3;
         for (int i=0; i<numRecords; i++) {
             double amount = (double)(asUINT8(data[2 + (i * 3)])) / 40.0;
             int age = asUINT8(data[3 + (i*3)]) + (((asUINT8(data[4 + (i*3)])) & 0b110000) << 4);
             records.add(new UnabsorbedInsulinRecord(amount,age));
         }
-
+        rawbytes = ByteUtil.substring(data,0,length);
         return true;
     }
 
@@ -79,6 +88,7 @@ public class UnabsorbedInsulin extends Record {
         in.putIntArray("ages",storedAges);
 
         super.writeToBundle(in);
+
     }
 
 }

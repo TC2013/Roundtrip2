@@ -159,15 +159,19 @@ public class HistoryPageListActivity extends AppCompatActivity {
         public void onBindViewHolder(final ViewHolder holder, int position) {
             holder.mItem = mValues.get(position);
             holder.mIdView.setText(mValues.get(position).dateAndName);
-            String keytext = new String();
+            String keytext = "";
             Set<String> keys = holder.mItem.content.keySet();
             int n = 0;
             for (String key : keys) {
                 if (!key.equals("_type") && !key.equals("_stype") && !key.equals("timestamp") && !key.equals("_opcode")) {
-                    keytext += key + ":" + holder.mItem.content.get(key).toString();
-                    n++;
-                    if (n < keys.size() - 1) {
-                        keytext += "\n";
+                    try {
+                        keytext += key + ":" + holder.mItem.content.get(key).toString();
+                        n++;
+                        if (n < keys.size() - 1) {
+                            keytext += "\n";
+                        }
+                    } catch (NullPointerException e) {
+                        e.printStackTrace();
                     }
                 }
             }

@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PowerManager;
@@ -22,13 +23,16 @@ import com.gxwtech.roundtrip2.RoundtripService.RileyLink.PumpManager;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RileyLinkBLE;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.PumpHistoryManager;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 
 /**
@@ -57,6 +61,7 @@ public class RoundtripService extends Service {
 
     // cache of most recently received set of pump history pages. Probably shouldn't be here.
     ArrayList<Page> mHistoryPages;
+    PumpHistoryManager pumpHistoryManager;
 
 
     // Our hardware/software connection
@@ -94,6 +99,9 @@ public class RoundtripService extends Service {
 
         // get most recently used RileyLink address
         mRileylinkAddress = sharedPref.getString(RT2Const.serviceLocal.rileylinkAddressKey,"");
+
+        pumpHistoryManager = new PumpHistoryManager(getApplicationContext());
+        rileyLinkBLE = new RileyLinkBLE(this);
 
         mBroadcastReceiver = new BroadcastReceiver() {
             @Override
@@ -198,11 +206,18 @@ public class RoundtripService extends Service {
                             }
                             bundle.putParcelableArrayList(RT2Const.IPC.MSG_PUMP_history_key, packedPages);
 
+                            // save it to SQL.
+                            pumpHistoryManager.clearDatabase();
+                            pumpHistoryManager.initFromPages(bundle);
+                            // write html page to documents folder
+                            pumpHistoryManager.writeHtmlPage();
+
                             // Set payload
                             msg.setData(bundle);
                             serviceConnection.sendMessage(msg);
                             Log.d(TAG, "sendMessage: sent Full history report");
                         } else if (RT2Const.IPC.MSG_PUMP_fetchSavedHistory.equals(action)) {
+                            Log.i(TAG,"Fetching saved history");
                             FileInputStream inputStream;
                             ArrayList<Page> storedHistoryPages = new ArrayList<>();
                             for (int i = 0; i < 16; i++) {
@@ -241,6 +256,12 @@ public class RoundtripService extends Service {
                                 }
                                 bundle.putParcelableArrayList(RT2Const.IPC.MSG_PUMP_history_key, packedPages);
 
+                                // save it to SQL.
+                                pumpHistoryManager.clearDatabase();
+                                pumpHistoryManager.initFromPages(bundle);
+                                // write html page to documents folder
+                                pumpHistoryManager.writeHtmlPage();
+
                                 // Set payload
                                 msg.setData(bundle);
                                 serviceConnection.sendMessage(msg);
@@ -276,10 +297,11 @@ public class RoundtripService extends Service {
 
         Log.d(TAG, "onCreate(): It's ALIVE!");
 
-        rileyLinkBLE = new RileyLinkBLE(this);
         if (mRileylinkAddress.length() > 0) {
             rileyLinkBLE.findRileyLink(mRileylinkAddress);
         }
+
+
     }
 
     @Nullable

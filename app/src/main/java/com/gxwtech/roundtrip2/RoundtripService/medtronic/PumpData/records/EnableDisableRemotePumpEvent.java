@@ -8,12 +8,10 @@ public class EnableDisableRemotePumpEvent extends TimeStampedRecord {
     }
 
     @Override
-    public String getShortTypeName() {
-        return "Toggle Remote";
-    }
+    public int getLength() { return 21; }
 
     @Override
-    public boolean parseFrom(byte[] data, PumpModel model) {
-        return simpleParse(21,data,2);
+    public String getShortTypeName() {
+        return "Toggle Remote";
     }
 }

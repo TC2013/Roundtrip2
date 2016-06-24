@@ -8,8 +8,10 @@ import org.joda.time.LocalDateTime;
  * Exists to easily merge 2 byte timestamps and 5 byte timestamps.
  */
 public class PumpTimeStamp {
-    private LocalDateTime localDateTime = new LocalDateTime();
-    public PumpTimeStamp() {}
+    private LocalDateTime localDateTime;
+    public PumpTimeStamp() {
+        localDateTime = new LocalDateTime(1973,1,1,1,1);
+    }
     public PumpTimeStamp(String stringRepresentation) { localDateTime.parse(stringRepresentation); }
     public PumpTimeStamp(LocalDate localDate) {
         localDateTime = new LocalDateTime(localDate);

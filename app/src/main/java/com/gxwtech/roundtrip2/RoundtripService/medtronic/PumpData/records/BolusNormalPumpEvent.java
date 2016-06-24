@@ -20,6 +20,9 @@ public class BolusNormalPumpEvent extends TimeStampedRecord {
     }
 
     @Override
+    public int getLength() { return PumpModel.isLargerFormat(model) ? 13 : 9; }
+
+    @Override
     public String getShortTypeName() {
         return "Normal Bolus";
     }
@@ -30,12 +33,7 @@ public class BolusNormalPumpEvent extends TimeStampedRecord {
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
-        if (PumpModel.isLargerFormat(model)) {
-            length = 13;
-        } else {
-            length = 9;
-        }
-        if (length > data.length) {
+        if (getLength() > data.length) {
             return false;
         }
         if (PumpModel.isLargerFormat(model)) {

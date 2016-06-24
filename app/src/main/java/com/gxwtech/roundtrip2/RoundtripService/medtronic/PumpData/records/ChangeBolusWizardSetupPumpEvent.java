@@ -10,12 +10,12 @@ public class ChangeBolusWizardSetupPumpEvent extends TimeStampedRecord {
     }
 
     @Override
-    public String getShortTypeName() {
-        return "Ch Bolus Wizard Setup";
+    public int getLength() {
+        return 144;
     }
 
     @Override
-    public boolean parseFrom(byte[] data, PumpModel model) {
-        return simpleParse(144,data,2);
+    public String getShortTypeName() {
+        return "Ch Bolus Wizard Setup";
     }
 }

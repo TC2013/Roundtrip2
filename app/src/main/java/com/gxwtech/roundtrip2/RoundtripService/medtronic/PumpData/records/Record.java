@@ -7,20 +7,27 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpTimeStamp;
 
 abstract public class Record {
     private static final String TAG = "Record";
+    protected PumpModel model;
     protected byte recordOp;
-    protected int length;
+    //protected int length;
+    protected int foundAtOffset;
+    protected byte[] rawbytes = new byte[0];
     //protected String recordTypeName = this.getClass().getSimpleName();
 
     public String getRecordTypeName() { return this.getClass().getSimpleName(); }
     public String getShortTypeName() {
         return this.getClass().getSimpleName();
     }
+    public void setPumpModel(PumpModel model) { this.model = model; }
+    public int getFoundAtOffset() { return foundAtOffset; }
 
     public Record() {
-        length = 1;
+
     }
 
-    public boolean parseFrom(byte[] data, PumpModel model) {
+    public boolean parseWithOffset(byte[] data, PumpModel model, int foundAtOffset) {
+        // keep track of where the record was found for later analysis
+        this.foundAtOffset = foundAtOffset;
         if (data == null) {
             return false;
         }
@@ -28,6 +35,10 @@ abstract public class Record {
             return false;
         }
         recordOp = data[0];
+        return parseFrom(data,model);
+    }
+
+    public boolean parseFrom(byte[] data, PumpModel model) {
         return true;
     }
 
@@ -36,7 +47,7 @@ abstract public class Record {
     }
 
     public int getLength() {
-        return length;
+        return 1;
     }
 
     public byte getRecordOp() {
@@ -61,10 +72,12 @@ abstract public class Record {
     }
 
     public void writeToBundle(Bundle in) {
-        in.putInt("length",length);
+        in.putInt("length",getLength());
+        in.putInt("foundAtOffset",foundAtOffset);
         in.putInt("_opcode",recordOp);
         in.putString("_type", getRecordTypeName());
         in.putString("_stype", getShortTypeName());
+        in.putByteArray("rawbytes",rawbytes);
     }
 
 }

@@ -9,12 +9,11 @@ public class DeleteAlarmClockTimePumpEvent extends TimeStampedRecord {
     public DeleteAlarmClockTimePumpEvent() {}
 
     @Override
+    public int getLength() { return 14; }
+
+    @Override
     public String getShortTypeName() {
         return "Del Alarm Clock Time";
     }
 
-    @Override
-    public boolean parseFrom(byte[] data, PumpModel model) {
-        return simpleParse(14,data,2);
-    }
 }

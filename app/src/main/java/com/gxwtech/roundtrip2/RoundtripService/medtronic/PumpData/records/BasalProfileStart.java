@@ -10,9 +10,10 @@ public class BasalProfileStart extends TimeStampedRecord {
     private double rate = 0.0;
     private int profileIndex = 0;
 
-    public BasalProfileStart() {
-        length = 10;
-    }
+    public BasalProfileStart() { }
+
+    @Override
+    public int getLength() { return 10; }
 
     @Override
     public String getShortTypeName() {
@@ -21,7 +22,7 @@ public class BasalProfileStart extends TimeStampedRecord {
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
-        if (!simpleParse(10,data,2)) {
+        if (!simpleParse(data,2)) {
             return false;
         }
 

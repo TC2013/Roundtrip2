@@ -32,7 +32,7 @@ import java.util.List;
 
 public class Page {
     private final static String TAG = "Page";
-    private static final boolean DEBUG_PAGE = false;
+    private static final boolean DEBUG_PAGE = true;
 
     private byte[] crc;
     private byte[] data;
@@ -58,14 +58,20 @@ public class Page {
         mRecordList = new ArrayList<>(); // wipe old contents each time when parsing.
         if (rawPage.length != 1024) {
             Log.e(TAG,"Unexpected page size. Expected: 1024 Was: " + rawPage.length);
-            return false;
+            //return false;
         }
         this.model = model;
         if (DEBUG_PAGE) {
             Log.i(TAG, "Parsing page");
         }
-        this.data = Arrays.copyOfRange(rawPage, 0, 1022);
-        this.crc = Arrays.copyOfRange(rawPage, 1022, 1024);
+
+        if (rawPage.length < 4) {
+            Log.e(TAG,"Page too short, need at least 4 bytes");
+            return false;
+        }
+
+        this.data = Arrays.copyOfRange(rawPage, 0, rawPage.length-2);
+        this.crc = Arrays.copyOfRange(rawPage, rawPage.length-2, rawPage.length);
         byte[] expectedCrc = CRC.calculate16CCITT(this.data);
         if (DEBUG_PAGE) {
             Log.i(TAG, String.format("Data length: %d", data.length));
@@ -78,38 +84,6 @@ public class Page {
             }
         }
 
-        // Go through page, parsing what we can
-        // add records to recordList
-        // Records can be of variable size, so ask the record how large it is.
-        // GGW: because (I think) our record-sizes are incorrect, this parser can't find anything.
-        // See below for alternate parser
-        /*
-        int dataIndex = 0;
-        boolean done = false;
-        while(!done) {
-            Record record = attemptParseRecord(data, dataIndex);
-            if (record != null) {
-                mRecordList.add(record);
-                Log.d(TAG,String.format("Found record %s at index %d",
-                        record.getClass().getSimpleName(),dataIndex));
-                // old code stopped when it encountered a 0x00 where it expected a record to start.
-                dataIndex = dataIndex + record.getSize(); // jump to next record
-            } else {
-                Log.d(TAG,String.format("No record found for bytecode 0x%02X",data[dataIndex]));
-                // if we failed to form a record, quit.
-                done = true;
-            }
-            if (dataIndex >= data.length) {
-                // if we've hit the end of our page, quit.
-                done = true;
-            } else if (data[dataIndex] == 0x00) {
-                // if the next 'record' starts with a zero, quit.
-                Log.d(TAG,String.format("Found end of Records(0x00) at index %d",dataIndex));
-                done = true;
-            }
-        }
-        */
-        // GGW: The above parser fails, so we're going to hack it:
         // Find possible matches for TempBasalRatePumpEvent, TempBasalDurationPumpEvent and BolusWizardBolusEstimatePumpEvent events
         // (as those are the only ones we care about at the moment. and try to parse them.
         int dataIndex = 0;
@@ -122,10 +96,14 @@ public class Page {
                 Log.d(TAG,String.format("Attempting to parse record at offset %d, OpCode is 0x%02X",
                         dataIndex,data[dataIndex]));
                         */
-                record = attemptParseRecord(data,dataIndex);
+                try {
+                    record = attemptParseRecord(data, dataIndex);
+                } catch (org.joda.time.IllegalFieldValueException e) {
+                    record = null;
+                }
             }
             if (record != null) {
-                Log.v(TAG,"parseFrom: found event "+record.getClass().getSimpleName());
+                Log.v(TAG,"parseFrom: found event "+record.getClass().getSimpleName() + " length=" + record.getLength() + " offset=" + record.getFoundAtOffset());
                 // found something.  Is it something we trust or care about?
                 if (record.getRecordOp() == RecordTypeEnum.RECORD_TYPE_BolusWizardBolusEstimate.opcode()) {
                     BolusWizardBolusEstimatePumpEvent bw = (BolusWizardBolusEstimatePumpEvent)record;
@@ -164,8 +142,11 @@ public class Page {
                         dataIndex +=1;
                     }
                 } else {
-                    mRecordList.add(record); // add it anyway.
-                    dataIndex +=1;
+                    if (false) {
+                        mRecordList.add(record); // add it anyway.
+                    }
+//                    dataIndex += record.getLength();  // set this to add 1 to try to parse everything we can
+                    dataIndex += 1;  // set this to add 1 to try to parse everything we can
 
                 }
             } else {
@@ -201,12 +182,12 @@ public class Page {
         }
         //Log.d(TAG,String.format("checking for handler for record type 0x%02X at index %d",data[offsetStart],offsetStart));
         RecordTypeEnum en = RecordTypeEnum.fromByte(data[offsetStart]);
-        T record = en.getRecordClassInstance();
+        T record = en.getRecordClassInstance(PumpModel.MM522);
         if (record != null) {
             // have to do this to set the record's opCode
             byte[] tmpData = new byte[data.length];
             System.arraycopy(data, offsetStart, tmpData, 0, data.length - offsetStart);
-            boolean didParse = record.parseFrom(tmpData, PumpModel.MM522);
+            boolean didParse = record.parseWithOffset(tmpData, PumpModel.MM522, offsetStart);
             if (!didParse) {
                 Log.e(TAG,String.format("attemptParseRecord: class %s (opcode 0x%02X) failed to parse at offset %d",record.getShortTypeName(),data[offsetStart],offsetStart));
             }
@@ -308,7 +289,7 @@ public class Page {
         mRecordList = new ArrayList<>();
         if (records != null) {
             for (int i=0; i<records.size(); i++) {
-                Record r = RecordTypeEnum.getRecordClassInstance(records.get(i));
+                Record r = RecordTypeEnum.getRecordClassInstance(records.get(i),model);
                 r.readFromBundle(records.get(i));
                 mRecordList.add(r);
             }

@@ -15,7 +15,6 @@ import java.util.ArrayList;
  */
 public class HistoryReport {
     public ArrayList<BolusWizardBolusEstimatePumpEvent> mBolusWizardEvents;
-    //public ArrayList<TempBasalEvent> mBasalEvents;
     public ArrayList<TempBasalEvent> mBasalEvents;
     public HistoryReport() {
         mBolusWizardEvents = new ArrayList<>();

@@ -16,7 +16,7 @@ public class TimeFormat {
 
     }
 
-    public static LocalDate parse2ByteDate(byte[] data, int offset) {
+    public static LocalDate parse2ByteDate(byte[] data, int offset) throws org.joda.time.IllegalFieldValueException {
         int low = data[0 + offset] & 0x1F;
         int mhigh = (data[0 + offset] & 0xE0) >> 4;
         int mlow = (data[1 + offset] & 0x80) >> 7;
@@ -27,20 +27,22 @@ public class TimeFormat {
         Log.w(TAG, String.format("Attempting to create DateTime from: %04d-%02d-%02d %02d:%02d:%02d",
                 year + 2000, month, dayOfMonth, hour, minutes, seconds));
         */
-        try {
+//        try {
             LocalDate rval = new LocalDate(year, month, dayOfMonth);
             return rval;
+        /*
         } catch (org.joda.time.IllegalFieldValueException e) {
             Log.e(TAG,"Illegal DateTime field");
             //e.printStackTrace();
-            return new LocalDate();
+            return new LocalDate(1973,3,3);
         }
+        */
     }
 
     // for relation to old code, replace offset with headerSize
 
 
-    public static LocalDateTime parse5ByteDate(byte[] data, int offset) {
+    public static LocalDateTime parse5ByteDate(byte[] data, int offset) throws org.joda.time.IllegalFieldValueException {
         //offset = headerSize;
         if (DEBUG_TIMEFORMAT) {
             Log.w(TAG, String.format("bytes to parse: 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X",
@@ -57,16 +59,16 @@ public class TimeFormat {
         Log.w(TAG,String.format("Attempting to create DateTime from: %04d-%02d-%02d %02d:%02d:%02d",
                 year+2000,month,dayOfMonth,hour,minutes,seconds));
         */
-        try {
+//        try {
             LocalDateTime timeStamp = new LocalDateTime(year + 2000, month, dayOfMonth, hour, minutes, seconds);
             return timeStamp;
+        /*
         } catch (org.joda.time.IllegalFieldValueException e) {
-            if (DEBUG_TIMEFORMAT) {
-                Log.e(TAG, "Illegal DateTime field");
-            }
+            Log.e(TAG, "Illegal DateTime field");
             //e.printStackTrace();
-            return new LocalDateTime();
+            return new LocalDateTime(1973,2,2,2,2);
         }
+        */
     }
 
 

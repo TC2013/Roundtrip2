@@ -14,13 +14,16 @@ public class BGReceivedPumpEvent extends TimeStampedRecord {
     }
 
     @Override
+    public int getLength() { return 10; }
+
+    @Override
     public String getShortTypeName() {
         return "BG Received";
     }
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
-        if (!super.simpleParse(10,data,2)) {
+        if (!super.simpleParse(data,2)) {
             return false;
         }
         amount = (asUINT8(data[1]) << 3) + (asUINT8(data[4])>>5);

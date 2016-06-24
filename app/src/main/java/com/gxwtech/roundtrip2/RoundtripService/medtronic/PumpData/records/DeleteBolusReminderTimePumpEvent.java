@@ -9,12 +9,11 @@ public class DeleteBolusReminderTimePumpEvent extends TimeStampedRecord {
     public DeleteBolusReminderTimePumpEvent() {}
 
     @Override
+    public int getLength() { return 9; }
+
+    @Override
     public String getShortTypeName() {
         return "Del Bolus Rmndr Time";
     }
 
-    @Override
-    public boolean parseFrom(byte[] data, PumpModel model) {
-        return simpleParse(9,data,2);
-    }
 }

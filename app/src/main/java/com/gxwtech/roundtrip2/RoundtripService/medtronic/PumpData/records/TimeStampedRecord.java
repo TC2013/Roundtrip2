@@ -5,10 +5,21 @@ import android.os.Bundle;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpTimeStamp;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
+import com.gxwtech.roundtrip2.util.ByteUtil;
 
+/*
+ *  Many events in the history only consist of a single opcode and a datestamp.
+ *  This serves to record that a particular event happened at a particular date.
+ *  Many of the subclasses of this class only override the opcode.
+ */
 abstract public class TimeStampedRecord extends Record {
     private final static String TAG = "TimeStampedRecord";
     private final static boolean DEBUG_TIMESTAMPEDRECORD = false;
+
+    @Override
+    public int getLength() { return 7; }
+
+    public int getDatestampOffset() { return 2; }
 
     protected PumpTimeStamp timestamp;
 
@@ -23,22 +34,28 @@ abstract public class TimeStampedRecord extends Record {
 
     @Override
     public boolean parseFrom(byte[] data, PumpModel model) {
-        return simpleParse(7,data,2);
+        return simpleParse(data,getDatestampOffset());
     }
 
     // This is useful if there is no data inside, or we don't care about the data.
-    public boolean simpleParse(int myLength, byte[] data, int fiveByteDateOffset) {
-        length = myLength;
-        if (length > data.length) {
+    public boolean simpleParse(byte[] data, int fiveByteDateOffset) {
+        if (getLength() > data.length) {
             return false;
         }
-        collectTimeStamp(data,fiveByteDateOffset);
-
+        if (!collectTimeStamp(data,fiveByteDateOffset)) {
+            return false;
+        }
+        rawbytes = ByteUtil.substring(data,0,getLength());
         return true;
     }
 
-    protected void collectTimeStamp(byte[] data, int offset) {
-        timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data,offset));
+    protected boolean collectTimeStamp(byte[] data, int offset) {
+        try {
+            timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data, offset));
+        } catch (org.joda.time.IllegalFieldValueException e) {
+            return false;
+        }
+        return true;
     }
 
     @Override
