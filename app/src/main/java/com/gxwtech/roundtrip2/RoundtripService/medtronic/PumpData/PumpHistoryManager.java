@@ -67,6 +67,12 @@ public class PumpHistoryManager {
     }
 
     public boolean timestampOK(String timestamp) {
+        if (timestamp == null) {
+            return false;
+        }
+        if (timestamp.length() < 4) {
+            return false;
+        }
         if ("2015".equals(timestamp.substring(0,4))) {
             return true;
         }
@@ -301,7 +307,21 @@ public class PumpHistoryManager {
             ArrayList<HtmlElement> dom = makeDom();
             Log.i(TAG,"There are " + dom.size() + " elements to render.");
             for (HtmlElement e : dom) {
-                os.write(e.toString().getBytes());
+                if (e != null) {
+                    String elementString = e.toString();
+                    if (elementString != null) {
+                        byte[] bytes = elementString.getBytes();
+                        if (bytes != null) {
+                            os.write(bytes);
+                        } else {
+                            Log.e(TAG,"WriteHtmlPage: bytes is null");
+                        }
+                    } else {
+                        Log.e(TAG,"WriteHtmlPage: elementString is null");
+                    }
+                } else {
+                    Log.e(TAG,"WriteHtmlPage: element is null");
+                }
             }
 
             os.write("</body></html>".getBytes());

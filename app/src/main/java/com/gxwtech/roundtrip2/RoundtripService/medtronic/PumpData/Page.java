@@ -20,6 +20,8 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.Record
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.TempBasalDurationPumpEvent;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.TempBasalRatePumpEvent;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpTimeStamp;
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 import com.gxwtech.roundtrip2.util.CRC;
 import com.gxwtech.roundtrip2.util.HexDump;
@@ -52,6 +54,78 @@ public class Page {
             return data;
         }
         return ByteUtil.concat(data,crc);
+    }
+
+    protected PumpTimeStamp collectTimeStamp(byte[] data, int offset) {
+        try {
+            PumpTimeStamp timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data, offset));
+            return timestamp;
+        } catch (org.joda.time.IllegalFieldValueException e) {
+            return null;
+        }
+    }
+
+    public boolean parseByDates(byte[] rawPage, PumpModel model) {
+        mRecordList = new ArrayList<>();
+        if (rawPage.length != 1024) {
+            Log.e(TAG,"Unexpected page size. Expected: 1024 Was: " + rawPage.length);
+            //return false;
+        }
+        this.model = model;
+        if (DEBUG_PAGE) {
+            Log.i(TAG, "Parsing page");
+        }
+
+        if (rawPage.length < 4) {
+            Log.e(TAG,"Page too short, need at least 4 bytes");
+            return false;
+        }
+
+        this.data = Arrays.copyOfRange(rawPage, 0, rawPage.length-2);
+        this.crc = Arrays.copyOfRange(rawPage, rawPage.length-2, rawPage.length);
+        byte[] expectedCrc = CRC.calculate16CCITT(this.data);
+        if (DEBUG_PAGE) {
+            Log.i(TAG, String.format("Data length: %d", data.length));
+        }
+        if (!Arrays.equals(crc, expectedCrc)) {
+            Log.w(TAG, String.format("CRC does not match expected value. Expected: %s Was: %s", HexDump.toHexString(expectedCrc), HexDump.toHexString(crc)));
+        } else {
+            if (DEBUG_PAGE) {
+                Log.i(TAG, "CRC OK");
+            }
+        }
+
+        int pageOffset = 0;
+        PumpTimeStamp lastPumpTimeStamp = new PumpTimeStamp();
+        while (pageOffset < this.data.length - 7) {
+            PumpTimeStamp timestamp = collectTimeStamp(data,pageOffset+2);
+            if (timestamp!=null) {
+                String year = timestamp.toString().substring(0,3);
+                if ("201".equals(year)) {
+                    // maybe found a record.
+                    Record record;
+                    try {
+                        record = attemptParseRecord(data, pageOffset);
+                    } catch (org.joda.time.IllegalFieldValueException e) {
+                        record = null;
+                    }
+                    if (record != null) {
+                        if (timestamp.getLocalDateTime().compareTo(lastPumpTimeStamp.getLocalDateTime()) >= 0) {
+                            Log.i(TAG, "Timestamp is increasing");
+                            lastPumpTimeStamp = timestamp;
+                            mRecordList.add(record);
+                        } else {
+                            Log.e(TAG, "Timestamp is decreasing");
+                        }
+                    }
+                }
+            }
+            pageOffset++;
+        }
+
+
+
+        return true;
     }
 
     public boolean parseFrom(byte[] rawPage, PumpModel model) {
@@ -275,7 +349,11 @@ public class Page {
         bundle.putString("model",PumpModel.toString(model));
         ArrayList<Bundle> records = new ArrayList<>();
         for (int i=0; i<mRecordList.size(); i++) {
-            records.add(mRecordList.get(i).dictionaryRepresentation());
+            try {
+                records.add(mRecordList.get(i).dictionaryRepresentation());
+            } catch (NullPointerException e) {
+                e.printStackTrace();
+            }
         }
         bundle.putParcelableArrayList("mRecordList",records);
         return bundle;

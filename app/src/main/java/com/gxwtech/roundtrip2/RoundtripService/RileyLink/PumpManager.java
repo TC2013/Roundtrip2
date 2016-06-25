@@ -105,16 +105,19 @@ public class PumpManager {
         rval.dumpToDebug();
 
         Page page = new Page();
-        page.parseFrom(rval.getData(),PumpModel.MM522);
+        //page.parseFrom(rval.getData(),PumpModel.MM522);
+        page.parseByDates(rval.getData(), PumpModel.MM522);
 
         return page;
     }
 
     public ArrayList<Page> getAllHistoryPages() {
         ArrayList<Page> pages = new ArrayList<>();
+
         for (int pageNum = 0; pageNum < 16; pageNum++) {
             pages.add(getPumpHistoryPage(pageNum));
         }
+
         return pages;
     }
 

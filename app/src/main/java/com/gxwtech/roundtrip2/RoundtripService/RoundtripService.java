@@ -229,7 +229,8 @@ public class RoundtripService extends Service {
                                     int numRead = inputStream.read(buffer, 0, 1024);
                                     if (numRead == 1024) {
                                         Page p = new Page();
-                                        p.parseFrom(buffer, PumpModel.MM522);
+                                        //p.parseFrom(buffer, PumpModel.MM522);
+                                        p.parseByDates(buffer, PumpModel.MM522);
                                         storedHistoryPages.add(p);
                                     } else {
                                         Log.e(TAG, filename + " error: short file");
