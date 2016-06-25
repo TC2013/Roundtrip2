@@ -241,6 +241,7 @@ public class PumpHistoryManager {
                             } else {
                                 rval.add(new HtmlElementGeneric(" "));
                             }
+                            rval.add(new HtmlCodeTagEnd());
                             rval.add(renderContexts(nextBundles));
                         }
                     }

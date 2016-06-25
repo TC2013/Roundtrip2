@@ -1,4 +1,4 @@
-package com.gxwtech.roundtrip2;
+package com.gxwtech.roundtrip2.HistoryActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -9,6 +9,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
 import android.view.View;
+
+import com.gxwtech.roundtrip2.R;
 
 /**
  * An activity representing a single HistoryPage detail screen. This

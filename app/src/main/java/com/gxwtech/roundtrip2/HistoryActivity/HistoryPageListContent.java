@@ -1,4 +1,4 @@
-package com.gxwtech.roundtrip2;
+package com.gxwtech.roundtrip2.HistoryActivity;
 
 import android.os.Bundle;
 import android.util.ArraySet;

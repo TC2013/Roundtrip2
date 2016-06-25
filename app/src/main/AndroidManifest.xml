@@ -42,7 +42,7 @@
         </service>
 
         <activity
-            android:name=".HistoryPageListActivity"
+            android:name=".HistoryActivity.HistoryPageListActivity"
             android:label="@string/title_historypage_list"
             android:parentActivityName=".MainActivity"
             android:theme="@style/AppTheme.NoActionBar">
@@ -51,13 +51,13 @@
                 android:value="com.gxwtech.roundtrip2.MainActivity" />
         </activity>
         <activity
-            android:name=".HistoryPageDetailActivity"
+            android:name=".HistoryActivity.HistoryPageDetailActivity"
             android:label="@string/title_historypage_detail"
-            android:parentActivityName=".HistoryPageListActivity"
+            android:parentActivityName=".HistoryActivity.HistoryPageListActivity"
             android:theme="@style/AppTheme.NoActionBar">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.gxwtech.roundtrip2.HistoryPageListActivity" />
+                android:value=".HistoryActivity.HistoryPageListActivity" />
         </activity>
     </application>
 

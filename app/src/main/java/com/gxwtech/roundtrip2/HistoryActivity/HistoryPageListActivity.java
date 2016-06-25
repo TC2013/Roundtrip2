@@ -1,4 +1,4 @@
-package com.gxwtech.roundtrip2;
+package com.gxwtech.roundtrip2.HistoryActivity;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -19,6 +19,9 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import com.gxwtech.roundtrip2.R;
+import com.gxwtech.roundtrip2.RT2Const;
 
 import java.util.ArrayList;
 import java.util.List;

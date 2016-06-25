@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
+import com.gxwtech.roundtrip2.HistoryActivity.HistoryPageListActivity;
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
 
 public class MainActivity extends AppCompatActivity {

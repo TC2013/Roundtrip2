@@ -9,5 +9,5 @@
     android:layout_marginLeft="16dp"
     android:layout_marginRight="16dp"
     app:layoutManager="LinearLayoutManager"
-    tools:context="com.gxwtech.roundtrip2.HistoryPageListActivity"
+    tools:context=".HistoryActivity.HistoryPageListActivity"
     tools:listitem="@layout/historypage_list_content" />
