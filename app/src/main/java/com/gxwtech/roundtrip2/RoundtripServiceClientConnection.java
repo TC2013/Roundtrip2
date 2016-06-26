@@ -13,6 +13,8 @@ import android.os.RemoteException;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
+import com.gxwtech.roundtrip2.ServiceData.ServiceCommand;
+
 /**
  * Created by geoff on 6/11/16.
  */
@@ -112,6 +114,29 @@ public class RoundtripServiceClientConnection {
         try {
             mService.send(msg);
         } catch (RemoteException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    public boolean sendServiceCommand(ServiceCommand command) {
+        if (!mBound) {
+            Log.e(TAG,"sendServiceCommand: cannot send command -- not yet bound to service");
+        }
+        Bundle commandBundle = command.getParameters();
+
+        Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC, 0, 0);
+        Bundle messageBundle = new Bundle();
+        messageBundle.putBundle(RT2Const.IPC.bundleKey,commandBundle);
+        messageBundle.putString(RT2Const.IPC.messageKey,RT2Const.IPC.MSG_ServiceCommand);
+
+        msg.setData(messageBundle);
+        msg.replyTo = mMessenger;
+        try {
+            mService.send(msg);
+        } catch (RemoteException e) {
+            Log.e(TAG,"sendServiceCommand: failed to send command: " + command.getParameters().getString("command"));
             e.printStackTrace();
             return false;
         }

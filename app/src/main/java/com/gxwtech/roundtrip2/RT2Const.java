@@ -51,6 +51,9 @@ public class RT2Const {
         public static final String MSG_PUMP_history_key = Prefix + "MSG_PUMP_history_key";
         public static final String MSG_PUMP_fetchSavedHistory = Prefix + "MSG_PUMP_fetchSavedHistory";
 
+        // interface for ServiceCommand/ServiceResult
+        public static final String MSG_ServiceCommand = Prefix + "MSG_ServiceCommand";
+        public static final String MSG_ServiceResult = Prefix + "MSG_ServiceResult";
 
     }
     public class local {

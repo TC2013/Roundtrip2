@@ -4,6 +4,8 @@ import android.os.Bundle;
 
 import org.joda.time.LocalDateTime;
 
+import java.util.UUID;
+
 /**
  * Created by geoff on 6/25/16.
  */
@@ -19,9 +21,14 @@ public class ServiceClientActions {
      *
      *     result: standard ok/error result
      */
+    
+    public static String makeRandomID() {
+        UUID uuid = UUID.randomUUID();
+        return uuid.toString();
+    }
 
-    public ServiceCommand makeSetTempBasalCommand(double amountUnitsPerHour, int durationMinutes) {
-        ServiceCommand command = new ServiceCommand("SetTempBasal");
+    public static ServiceCommand makeSetTempBasalCommand(double amountUnitsPerHour, int durationMinutes) {
+        ServiceCommand command = new ServiceCommand("SetTempBasal",makeRandomID());
         Bundle b = command.getParameters();
         b.putDouble("amountUnitsPerHour",amountUnitsPerHour);
         b.putInt("durationMinutes",durationMinutes);
@@ -40,52 +47,52 @@ public class ServiceClientActions {
      */
 
     // 'which' is "STD", "A", or "B"
-    public ServiceCommand makeReadBasalProfileCommand(String which) {
-        ServiceCommand command = new ServiceCommand("ReadBasalProfile");
+    public static ServiceCommand makeReadBasalProfileCommand(String which) {
+        ServiceCommand command = new ServiceCommand("ReadBasalProfile",makeRandomID());
         Bundle b = command.getParameters();
         b.putString("which",which);
         command.setParameters(b);
         return command;
     }
 
-    public ServiceCommand makeReadPumpClockCommand() {
-        return new ServiceCommand("ReadPumpClock");
+    public static ServiceCommand makeReadPumpClockCommand() {
+        return new ServiceCommand("ReadPumpClock",makeRandomID());
     }
 
-    public ServiceCommand makeSendBolusCommand(double amountUnits) {
-        ServiceCommand command = new ServiceCommand("SendBolus");
+    public static ServiceCommand makeSendBolusCommand(double amountUnits) {
+        ServiceCommand command = new ServiceCommand("SendBolus",makeRandomID());
         Bundle b = command.getParameters();
         b.putDouble("amountInUnits",amountUnits);
         command.setParameters(b);
         return command;
     }
 
-    public ServiceCommand makeSetPumpClockCommand(LocalDateTime localDateTime) {
-        ServiceCommand command = new ServiceCommand("SetPumpClock");
+    public static ServiceCommand makeSetPumpClockCommand(LocalDateTime localDateTime) {
+        ServiceCommand command = new ServiceCommand("SetPumpClock",makeRandomID());
         Bundle b = command.getParameters();
         b.putString("localDateTime",localDateTime.toString());
         command.setParameters(b);
         return command;
     }
 
-    public ServiceCommand makeReadISFProfileCommand() {
-        return new ServiceCommand("ReadISFProfile");
+    public static ServiceCommand makeReadISFProfileCommand() {
+        return new ServiceCommand("ReadISFProfile",makeRandomID());
     }
 
-    public ServiceCommand makeReadBolusWizardCarbProfileCommand() {
-        return new ServiceCommand("ReadBolusWizardCarbProfile");
+    public static ServiceCommand makeReadBolusWizardCarbProfileCommand() {
+        return new ServiceCommand("ReadBolusWizardCarbProfile",makeRandomID());
     }
 
-    public ServiceCommand makeReadDIASettingCommand() {
-        return new ServiceCommand("ReadDIASetting");
+    public static ServiceCommand makeReadDIASettingCommand() {
+        return new ServiceCommand("ReadDIASetting",makeRandomID());
     }
 
-    public ServiceCommand makeReadBatteryLevelCommand() {
-        return new ServiceCommand("ReadBatteryLevel");
+    public static ServiceCommand makeReadBatteryLevelCommand() {
+        return new ServiceCommand("ReadBatteryLevel",makeRandomID());
     }
 
-    public ServiceCommand makeReadReservoirLevelCommand() {
-        return new ServiceCommand("ReadReservoirLevel");
+    public static ServiceCommand makeReadReservoirLevelCommand() {
+        return new ServiceCommand("ReadReservoirLevel",makeRandomID());
     }
 
 }

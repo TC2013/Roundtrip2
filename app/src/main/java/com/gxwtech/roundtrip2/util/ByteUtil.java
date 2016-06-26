@@ -21,6 +21,10 @@ public class ByteUtil {
         return (byte) (s % 256);
     }
 
+    public static int asUINT8(byte b) {
+        return (b < 0) ? b + 256 : b;
+    }
+
     /* For Reference: static void System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length) */
 
     public static byte[] concat(byte[] a, byte[] b) {

@@ -66,9 +66,9 @@
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Do Quick Tune"
-            android:id="@+id/buttonQuickTune"
-            android:onClick="onQuickTuneButtonClicked"/>
+            android:text="Read Pump Clock"
+            android:id="@+id/buttonReadPumpClock"
+            android:onClick="onReadPumpClockButtonClicked"/>
 
         <Button
             android:layout_width="wrap_content"

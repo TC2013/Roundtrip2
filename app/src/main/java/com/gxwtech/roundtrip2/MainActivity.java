@@ -15,6 +15,8 @@ import android.widget.TextView;
 
 import com.gxwtech.roundtrip2.HistoryActivity.HistoryPageListActivity;
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
+import com.gxwtech.roundtrip2.ServiceData.ServiceClientActions;
+import com.gxwtech.roundtrip2.ServiceData.ServiceCommand;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -67,8 +69,10 @@ public class MainActivity extends AppCompatActivity {
                             // wait for history viwere to announce "ready"
                         } else if (RT2Const.local.INTENT_historyPageViewerReady.equals(action)) {
                             Intent sendHistoryIntent = new Intent(RT2Const.local.INTENT_historyPageBundleIncoming);
-                            sendHistoryIntent.putExtra(RT2Const.IPC.MSG_PUMP_history_key,storeForHistoryViewer);
+                            sendHistoryIntent.putExtra(RT2Const.IPC.MSG_PUMP_history_key, storeForHistoryViewer);
                             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(sendHistoryIntent);
+                        } else if (RT2Const.IPC.MSG_ServiceResult.equals(action)) {
+                            Log.i(TAG,"Received ServiceResult");
                         } else {
                             Log.e(TAG,"Unrecognized intent action: " + action);
                         }
@@ -85,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_pumpLost);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_reportedPumpModel);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_history);
+        intentFilter.addAction(RT2Const.IPC.MSG_ServiceResult);
         intentFilter.addAction(RT2Const.local.INTENT_historyPageViewerReady);
 
         LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, intentFilter);
@@ -199,8 +204,9 @@ public class MainActivity extends AppCompatActivity {
         sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchSavedHistory);
     }
 
-    public void onQuickTuneButtonClicked(View view) {
-        sendIPCMessage(RT2Const.IPC.MSG_PUMP_quickTune);
+    public void onReadPumpClockButtonClicked(View view) {
+        ServiceCommand readPumpClockCommand = ServiceClientActions.makeReadPumpClockCommand();
+        roundtripServiceClientConnection.sendServiceCommand(readPumpClockCommand);
     }
 
 }

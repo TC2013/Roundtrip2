@@ -14,6 +14,7 @@ import android.util.Log;
 import com.gxwtech.roundtrip2.RT2Const;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created by geoff on 6/11/16.
@@ -21,7 +22,8 @@ import java.util.ArrayList;
 public class RoundtripServiceIPCConnection {
     private static final String TAG = "RTServiceIPC";
     private Context context;
-    private ArrayList<Messenger> mClients = new ArrayList<>();
+    //private ArrayList<Messenger> mClients = new ArrayList<>();
+    private HashMap<Integer,Messenger> mClients = new HashMap<>();
 
     private final Messenger mMessenger = new Messenger(new IncomingHandler());
 
@@ -41,7 +43,7 @@ public class RoundtripServiceIPCConnection {
                     Message myReply = Message.obtain(null, RT2Const.IPC.MSG_clientRegistered,0,0);
                     try {
                         msg.replyTo.send(myReply);
-                        mClients.add(msg.replyTo);
+                        mClients.put(mClients.hashCode(),msg.replyTo);
                         Log.d(TAG,"handleMessage: Registered client");
                     } catch (RemoteException e) {
                         // I guess they aren't registered after all...
@@ -50,10 +52,11 @@ public class RoundtripServiceIPCConnection {
 
                     break;
                 case RT2Const.IPC.MSG_unregisterClient:
-                    mClients.remove(msg.replyTo);
+                    mClients.remove(msg.replyTo.hashCode());
                 case RT2Const.IPC.MSG_IPC:
                     // As the current thread is likely a GUI thread from some app,
                     // rebroadcast the message as a local item.
+                    // Convert from Message to Intent
                     if (msg.replyTo != null) {
                         Log.d(TAG, "Received IPC message from client " + msg.replyTo.toString());
                         bundle.putInt(RT2Const.serviceLocal.IPCReplyTo_hashCodeKey, msg.replyTo.hashCode());
@@ -81,7 +84,10 @@ public class RoundtripServiceIPCConnection {
         return mMessenger.getBinder();
     }
 
-    public boolean sendMessage(Message msg) {
+    // if clientHashcode is null, broadcast to all clients
+    public boolean sendMessage(Message msg, Integer clientHashcode) {
+        Messenger clientMessenger = null;
+
         if (mClients.isEmpty()) {
             if (msg.what == RT2Const.IPC.MSG_IPC) {
                 Log.e(TAG, "sendMessage: no clients, cannot send: " + msg.getData().getString(RT2Const.IPC.messageKey, "(unknown)"));
@@ -89,9 +95,18 @@ public class RoundtripServiceIPCConnection {
                 Log.e(TAG, "sendMessage: no clients, cannot send: what="+msg.what);
             }
         } else {
+            if (clientHashcode != null) {
+                clientMessenger = mClients.get(clientHashcode);
+            }
             try {
-                for (Messenger client : mClients) {
-                    client.send(msg);
+                if (clientMessenger != null) {
+                    // sending to just one client
+                    clientMessenger.send(msg);
+                } else {
+                    // send to all clients
+                    for (Integer clientHash : mClients.keySet()) {
+                        mClients.get(clientHash).send(msg);
+                    }
                 }
             } catch (RemoteException e) {
                 e.printStackTrace();
@@ -108,10 +123,14 @@ public class RoundtripServiceIPCConnection {
 
         // Set payload
         msg.setData(bundle);
-        sendMessage(msg);
+        sendMessage(msg, null);
         Log.d(TAG,"sendMessage: sent "+messageType);
     }
 
-
-
+    public void sendMessageBundle(Bundle messageBundle, Integer clientHashcode) {
+        Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC,0,0);
+        // Set payload
+        msg.setData(messageBundle);
+        sendMessage(msg, clientHashcode);
+    }
 }

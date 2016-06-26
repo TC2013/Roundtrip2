@@ -10,14 +10,24 @@ public class ServiceCommand {
     public ServiceCommand() {
         params = new Bundle();
     }
-    public ServiceCommand(String commandName) {
+    // commandID is a string that the client can set on the message.
+    // The service does not use this value, but passes it back with the result
+    // so that the client can identify it.
+    public ServiceCommand(String commandName, String commandID) {
         params = new Bundle();
         params.putString("command",commandName);
+        params.putString("commandID",commandID);
     }
     public Bundle getParameters() {
         return params;
     }
     public void setParameters(Bundle b) {
         params = b;
+    }
+    public String getCommandID() {
+        return params.getString("commandID");
+    }
+    public String getCommandName() {
+        return params.getString("command");
     }
 }

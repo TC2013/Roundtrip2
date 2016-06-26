@@ -19,9 +19,12 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.Record;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpMessage;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
+import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
+import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 import com.gxwtech.roundtrip2.util.StringUtil;
 
+import org.joda.time.IllegalFieldValueException;
 import org.joda.time.Instant;
 import org.joda.time.LocalDateTime;
 
@@ -134,12 +137,52 @@ public class PumpManager {
         }
         return pages;
     }
-    public void getPumpRTC() {
+
+    private LocalDateTime parsePumpRTCBytes(byte[] bytes) {
+        if (bytes == null) return null;
+        if (bytes.length < 7) return null;
+        int hours = ByteUtil.asUINT8(bytes[0]);
+        int minutes = ByteUtil.asUINT8(bytes[1]);
+        int seconds = ByteUtil.asUINT8(bytes[2]);
+        int year = (ByteUtil.asUINT8(bytes[4]) & 0x3f) + 1984;
+        int month = ByteUtil.asUINT8(bytes[5]);
+        int day = ByteUtil.asUINT8(bytes[6]);
+        try {
+            LocalDateTime pumpTime = new LocalDateTime(year, month, day, hours, minutes, seconds);
+            return pumpTime;
+        } catch (IllegalFieldValueException e) {
+            Log.e(TAG,String.format("parsePumpRTCBytes: Failed to parse pump time value: year=%d, month=%d, hours=%d, minutes=%d, seconds=%d",year,month,day,hours,minutes,seconds));
+            return null;
+        }
+    }
+
+    public ReadPumpClockResult getPumpRTC() {
+        ReadPumpClockResult rval = new ReadPumpClockResult();
         wakeup(6);
         PumpMessage getRTCMsg = makePumpMessage(new MessageType(MessageType.CMD_M_READ_RTC), new CarelinkShortMessageBody(new byte[]{0}));
         Log.i(TAG,"getPumpRTC: " + ByteUtil.shortHexString(getRTCMsg.getTxData()));
-        RFSpyResponse response = rfspy.transmitThenReceive(new RadioPacket(getRTCMsg.getTxData()),2000);
-        Log.i(TAG,"getPumpRTC response: " + ByteUtil.shortHexString(response.getRadioResponse().getPayload()));
+        PumpMessage response = sendAndListen(getRTCMsg);
+        if (response.isValid()) {
+            byte[] receivedData = response.getContents();
+            if (receivedData != null) {
+                if (receivedData.length >= 9) {
+                    LocalDateTime pumpTime = parsePumpRTCBytes(ByteUtil.substring(receivedData, 2, 7));
+                    if (pumpTime != null) {
+                        rval.setTime(pumpTime);
+                        rval.setResultOK();
+                    } else {
+                        rval.setResultError(ServiceResult.ERROR_MALFORMED_PUMP_RESPONSE);
+                    }
+                } else {
+                    rval.setResultError(ServiceResult.ERROR_MALFORMED_PUMP_RESPONSE);
+                }
+            } else {
+                rval.setResultError(ServiceResult.ERROR_MALFORMED_PUMP_RESPONSE);
+            }
+        } else {
+            rval.setResultError(ServiceResult.ERROR_INVALID_PUMP_RESPONSE);
+        }
+        return rval;
     }
 
     public PumpModel getPumpModel() {

@@ -24,8 +24,14 @@ import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RileyLinkBLE;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.PumpHistoryManager;
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpMessage;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
+import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
+import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
 import com.gxwtech.roundtrip2.util.ByteUtil;
+
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -214,7 +220,7 @@ public class RoundtripService extends Service {
 
                             // Set payload
                             msg.setData(bundle);
-                            serviceConnection.sendMessage(msg);
+                            serviceConnection.sendMessage(msg,null/*broadcast*/);
                             Log.d(TAG, "sendMessage: sent Full history report");
                         } else if (RT2Const.IPC.MSG_PUMP_fetchSavedHistory.equals(action)) {
                             Log.i(TAG,"Fetching saved history");
@@ -265,15 +271,18 @@ public class RoundtripService extends Service {
 
                                 // Set payload
                                 msg.setData(bundle);
-                                serviceConnection.sendMessage(msg);
+                                serviceConnection.sendMessage(msg,null/*broadcast*/);
 
                             }
                         } else if (RT2Const.IPC.MSG_PUMP_useThisAddress.equals(action)) {
                             Bundle bundle = intent.getBundleExtra(RT2Const.IPC.bundleKey);
                             String idString = bundle.getString("pumpID");
-                            if ((idString != null) && (idString.length()==6)) {
+                            if ((idString != null) && (idString.length() == 6)) {
                                 setPumpIDString(idString);
                             }
+                        } else if (RT2Const.IPC.MSG_ServiceCommand.equals(action)) {
+                            Bundle bundle = intent.getBundleExtra(RT2Const.IPC.bundleKey);
+                            handleServiceCommand(bundle);
                         } else {
                             Log.e(TAG, "Unhandled broadcast: action=" + action);
                         }
@@ -293,6 +302,7 @@ public class RoundtripService extends Service {
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_fetchHistory);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_useThisAddress);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_fetchSavedHistory);
+        intentFilter.addAction(RT2Const.IPC.MSG_ServiceCommand);
 
         LocalBroadcastManager.getInstance(mContext).registerReceiver(mBroadcastReceiver, intentFilter);
 
@@ -436,5 +446,41 @@ public class RoundtripService extends Service {
     private void reportPumpFound() {
         serviceConnection.sendMessage(RT2Const.IPC.MSG_PUMP_pumpFound);
     }
+
+    private void handleServiceCommand(Bundle messageBundle) {
+        // messageBundle also has our "reply-to" hash.
+        Bundle commandBundle = messageBundle.getBundle(RT2Const.IPC.bundleKey);
+        String commandString = commandBundle.getString("command");
+        if ("ReadPumpClock".equals(commandString)) {
+            ReadPumpClockResult pumpResponse = pumpManager.getPumpRTC();
+            if (pumpResponse != null) {
+                Log.i(TAG,"ReadPumpClock: " + pumpResponse.getTimeString());
+            } else {
+                Log.e(TAG,"handleServiceCommand("+commandString+") pumpResponse is null");
+            }
+            sendServiceCommandResponse(messageBundle,pumpResponse);
+        }
+    }
+
+
+    private void sendServiceCommandResponse(Bundle originalIntentBundle, ServiceResult serviceResult) {
+        // convert from Intent bundle to Message bundle
+        if (originalIntentBundle == null) return;
+        // get the key (hashcode) of the client who requested this
+        Integer clientHashcode = originalIntentBundle.getInt(RT2Const.serviceLocal.IPCReplyTo_hashCodeKey);
+        // make a new bundle to send as the message data
+        Bundle serviceResultBundle = new Bundle();
+        // get the original command bundle that was sent to us
+        Bundle originalCommandBundle = originalIntentBundle.getBundle(RT2Const.IPC.bundleKey);
+        String commandID = originalCommandBundle.getString("commandID");
+        // put the original command into the reply (why not?)
+        serviceResultBundle.putBundle("command",originalCommandBundle);
+        serviceResultBundle.putString("commandID",commandID);
+        serviceResultBundle.putBundle("response",serviceResult.getResponseBundle());
+        serviceResultBundle.putString(RT2Const.IPC.messageKey, RT2Const.IPC.MSG_ServiceResult);
+
+        serviceConnection.sendMessageBundle(serviceResultBundle,clientHashcode);
+    }
+
 }
 
