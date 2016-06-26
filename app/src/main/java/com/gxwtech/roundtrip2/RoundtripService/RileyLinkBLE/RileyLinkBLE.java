@@ -26,6 +26,7 @@ import com.gxwtech.roundtrip2.util.ThreadUtil;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -280,7 +281,13 @@ public class RileyLinkBLE {
         if (mCurrentOperation != null) {
             rval.resultCode = BLECommOperationResult.RESULT_BUSY;
         } else {
-            BluetoothGattCharacteristic chara = bluetoothConnectionGatt.getService(serviceUUID).getCharacteristic(charaUUID);
+            BluetoothGattCharacteristic chara;
+            try {
+                chara = bluetoothConnectionGatt.getService(serviceUUID).getCharacteristic(charaUUID);
+            } catch (NullPointerException n){
+                rval.resultCode = BLECommOperationResult.RESULT_TIMEOUT;
+                return rval;
+            }
             // Tell Android that we want the notifications
             bluetoothConnectionGatt.setCharacteristicNotification(chara, true);
             List<BluetoothGattDescriptor> list = chara.getDescriptors();

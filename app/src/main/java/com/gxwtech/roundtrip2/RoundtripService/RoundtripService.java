@@ -180,25 +180,29 @@ public class RoundtripService extends Service {
                         } else if (action.equals(RT2Const.IPC.MSG_PUMP_quickTune)) {
                             doTunePump();
                         } else if (action.equals(RT2Const.IPC.MSG_PUMP_fetchHistory)) {
-                            mHistoryPages = pumpManager.getAllHistoryPages();
-                            final boolean savePages = true;
-                            if (savePages) {
-                                for (int i = 0; i < mHistoryPages.size(); i++) {
-                                    String filename = "PumpHistoryPage-" + i;
-                                    Log.w(TAG, "Saving history page to file " + filename);
-                                    FileOutputStream outputStream;
-                                    try {
-                                        outputStream = openFileOutput(filename, 0);
-                                        outputStream.write(mHistoryPages.get(i).getRawData());
-                                        outputStream.close();
-                                    } catch (FileNotFoundException fnf) {
-                                        fnf.printStackTrace();
-                                    } catch (IOException ioe) {
-                                        ioe.printStackTrace();
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
-                                    }
+                            if (pumpManager == null){
+                                Log.w(TAG, "No pump found, exiting fetchHistory");
+                            } else {
+                                mHistoryPages = pumpManager.getAllHistoryPages();
+                                final boolean savePages = true;
+                                if (savePages) {
+                                    for (int i = 0; i < mHistoryPages.size(); i++) {
+                                        String filename = "PumpHistoryPage-" + i;
+                                        Log.w(TAG, "Saving history page to file " + filename);
+                                        FileOutputStream outputStream;
+                                        try {
+                                            outputStream = openFileOutput(filename, 0);
+                                            outputStream.write(mHistoryPages.get(i).getRawData());
+                                            outputStream.close();
+                                        } catch (FileNotFoundException fnf) {
+                                            fnf.printStackTrace();
+                                        } catch (IOException ioe) {
+                                            ioe.printStackTrace();
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
 
+                                    }
                                 }
                             }
 
