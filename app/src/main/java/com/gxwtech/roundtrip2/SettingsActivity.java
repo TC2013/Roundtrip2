@@ -50,8 +50,6 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
                     break;
                 case RT2Const.serviceLocal.pumpIDKey:
                     preference.setSummary(stringValue);
-                    //Notify that we have a new pumpIDKey
-                    LocalBroadcastManager.getInstance(MainApp.instance()).sendBroadcast(new Intent(RT2Const.local.INTENT_NEW_pumpIDKey));
                     break;
                 default:
                     // For all other preferences, set the summary to the value's

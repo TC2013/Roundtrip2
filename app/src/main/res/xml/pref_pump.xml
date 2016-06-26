@@ -7,6 +7,7 @@
         android:maxLines="1"
         android:selectAllOnFocus="true"
         android:singleLine="true"
+        android:numeric="integer"
         android:title="@string/pref_pump_id" />
 
     <EditTextPreference

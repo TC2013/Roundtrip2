@@ -88,6 +88,8 @@ public class RileyLinkScan extends AppCompatActivity{
 
                 Log.d(TAG, "New rileylinkAddressKey: " + bleAddress);
 
+                //Notify that we have a new pumpIDKey
+                LocalBroadcastManager.getInstance(MainApp.instance()).sendBroadcast(new Intent(RT2Const.local.INTENT_NEW_pumpIDKey));
                 finish();
             }
         });
@@ -286,11 +288,12 @@ public class RileyLinkScan extends AppCompatActivity{
             }
 
             BluetoothDevice device = mLeDevices.get(i);
-            final String deviceName = device.getName();
+            String deviceName = device.getName();
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
             if(prefs.getString(RT2Const.serviceLocal.rileylinkAddressKey, "").compareTo(device.getAddress()) == 0) {
-                viewHolder.deviceName.setTextColor(getColor(R.color.accent));
-                viewHolder.deviceAddress.setTextColor(getColor(R.color.accent));
+                viewHolder.deviceName.setTextColor(getColor(R.color.secondary_text_light));
+                viewHolder.deviceAddress.setTextColor(getColor(R.color.secondary_text_light));
+                deviceName += " (" + getResources().getString(R.string.selected_device) + ")";
             }
             viewHolder.deviceName.setText(deviceName);
             viewHolder.deviceAddress.setText(device.getAddress());

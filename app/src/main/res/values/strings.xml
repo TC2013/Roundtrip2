@@ -17,7 +17,6 @@
     <string name="pref_pump_prefs">Pump</string>
     <string name="pref_rileylink_prefs">RileyLink</string>
     <string name="pref_rileylink_ble_id">RileyLink BLE ID</string>
-    <string name="title_activity_riley_link_scan">RileyLinkScan</string>
 
     <!-- Location Settings -->
     <string name="location_not_found_title">Location Is Not Enabled</string>
@@ -31,5 +30,10 @@
     <!-- Activity Titles -->
     <string name="title_pump_history">Pump History</string>
     <string name="title_rileylink_scan">RileyLink Scan</string>
+    <string name="title_activity_riley_link_scan">RileyLink BLE Scan</string>
+
+    <!-- RileyLink Scan -->
+    <string name="selected_device">Selected</string>
+
 
 </resources>
