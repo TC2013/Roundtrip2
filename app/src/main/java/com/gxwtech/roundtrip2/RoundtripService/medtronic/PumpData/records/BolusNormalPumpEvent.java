@@ -41,13 +41,22 @@ public class BolusNormalPumpEvent extends TimeStampedRecord {
             deliveredAmount = insulinDecode(asUINT8(data[3]),asUINT8(data[4]));
             unabsorbedInsulinTotal = insulinDecode(asUINT8(data[5]),asUINT8(data[6]));
             duration = asUINT8(data[7]) * 30;
-            timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data,8));
+            try {
+                timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data, 8));
+            } catch (org.joda.time.IllegalFieldValueException e) {
+                return false;
+            }
         } else {
             programmedAmount = asUINT8(data[1]) / 10.0f;
             deliveredAmount = asUINT8(data[2]) / 10.0f;
             duration = asUINT8(data[3]) * 30;
             unabsorbedInsulinTotal = 0;
-            timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data,4));
+            try {
+                timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data,4));
+            } catch (org.joda.time.IllegalFieldValueException e) {
+                return false;
+            }
+
         }
 
         bolusType = (duration > 0) ? "square" : "normal";
