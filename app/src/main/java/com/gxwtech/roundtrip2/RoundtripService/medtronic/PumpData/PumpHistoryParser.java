@@ -93,13 +93,21 @@ public class PumpHistoryParser {
                     deliveredAmount = insulinDecode(asUINT8(data[3]),asUINT8(data[4]));
                     unabsorbedInsulinTotal = insulinDecode(asUINT8(data[5]),asUINT8(data[6]));
                     duration = asUINT8(data[7]) * 30;
-                    timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data,8));
+                    try {
+                        timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data, 8));
+                    } catch (org.joda.time.IllegalFieldValueException e) {
+                        timestamp = new PumpTimeStamp();
+                    }
                 } else {
                     programmedAmount = asUINT8(data[1]) / 10.0f;
                     deliveredAmount = asUINT8(data[2]) / 10.0f;
                     duration = asUINT8(data[3]) * 30;
                     unabsorbedInsulinTotal = 0;
-                    timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data,4));
+                    try {
+                        timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data, 4));
+                    } catch (org.joda.time.IllegalFieldValueException e) {
+                        timestamp = new PumpTimeStamp();
+                    }
                 }
                 bolusType = (duration > 0) ? "square" : "normal";
                 record.putDouble("programmedAmount",programmedAmount);
@@ -119,7 +127,11 @@ public class PumpHistoryParser {
                 length = 7;
                 if (length + offset > data.length) return null;
                 record.putInt("length",length);
-                timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data,2));
+                try {
+                    timestamp = new PumpTimeStamp(TimeFormat.parse5ByteDate(data, 2));
+                } catch (org.joda.time.IllegalFieldValueException e) {
+                    timestamp = new PumpTimeStamp();
+                }
                 record.putString("timestamp",timestamp.getLocalDateTime().toString());
             default:
                 record.putInt("length",0);

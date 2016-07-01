@@ -25,7 +25,11 @@ public class Sara6EPumpEvent extends TimeStampedRecord {
         if (16 > data.length) {
             return false;
         }
-        timestamp = new PumpTimeStamp(TimeFormat.parse2ByteDate(data,1));
+        try {
+            timestamp = new PumpTimeStamp(TimeFormat.parse2ByteDate(data,1));
+        } catch (org.joda.time.IllegalFieldValueException e) {
+            return false;
+        }
         return true;
     }
 
