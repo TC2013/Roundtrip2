@@ -1,8 +1,16 @@
 package com.gxwtech.roundtrip2.RoundtripService.RileyLink;
 
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.os.SystemClock;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
+import com.gxwtech.roundtrip2.RT2Const;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpyResponse;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RadioPacket;
@@ -15,11 +23,14 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.Messages.MessageBody;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.Messages.MessageType;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.Messages.PumpAckMessageBody;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PacketType;
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.ISFTable;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.Record;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpMessage;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
 import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
+import com.gxwtech.roundtrip2.ServiceData.RetrieveHistoryPageResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 import com.gxwtech.roundtrip2.util.StringUtil;
@@ -34,16 +45,33 @@ import java.util.ArrayList;
 /**
  * Created by geoff on 5/30/16.
  */
-public class PumpManager {
+public class PumpManager extends Thread {
     private static final String TAG = "PumpManager";
     public double[] scanFrequencies = {916.45, 916.50, 916.55, 916.60, 916.65, 916.70, 916.75, 916.80};
+    public static final int startSession_signal = 6656; // arbitrary.
     private long pumpAwakeUntil = 0;
     private final RFSpy rfspy;
     private byte[] pumpID;
     public boolean DEBUG_PUMPMANAGER = true;
-    public PumpManager(RFSpy rfspy, byte[] pumpID) {
+    private final Context context;
+    private Handler serviceCommandHandler;
+    public PumpManager(Context context, RFSpy rfspy, byte[] pumpID) {
+        this.context = context;
         this.rfspy = rfspy;
         this.pumpID = pumpID;
+    }
+
+    @Override
+    public void run() {
+        Looper.prepare();
+        serviceCommandHandler = new PumpCommandHandler();
+        Looper.loop();
+    }
+
+    public boolean handlePumpCommand(Message msg) {
+        if (serviceCommandHandler == null) return false;
+        serviceCommandHandler.sendMessage(msg);
+        return true;
     }
 
     private PumpMessage runCommandWithArgs(PumpMessage msg) {
@@ -204,6 +232,15 @@ public class PumpManager {
         }
 
         return rval;
+    }
+
+
+    public ISFTable getPumpISFProfile() {
+        PumpMessage getISFProfileMessage = makePumpMessage(new MessageType(MessageType.GetISFProfile),new CarelinkShortMessageBody());
+        PumpMessage resp = sendAndListen(getISFProfileMessage);
+        ISFTable table = new ISFTable();
+        table.parseFrom(resp.getContents());
+        return table;
     }
 
     public void tryoutPacket(byte[] pkt) {
@@ -409,6 +446,69 @@ _
         msg.init(ByteUtil.concat(ByteUtil.concat(new byte[]{(byte)0xa7},pumpID),typeAndBody));
         return msg;
     }
+
+    // This allows us to run pump commands asynchronously from caller's thread.
+    private class PumpCommandHandler extends Handler {
+        private void sendReply(Bundle originalMessageBundle, ServiceResult serviceResult) {
+            // convert from Intent bundle to Message bundle
+            if (originalMessageBundle == null) return;
+            // make a new bundle to send as the message data
+            Bundle pumpResultBundle = new Bundle();
+            // get the original command bundle that was sent to us
+            String commandID = originalMessageBundle.getString("commandID");
+            // put the original command into the reply (why not?)
+            pumpResultBundle.putBundle("commandBundle",originalMessageBundle);
+            pumpResultBundle.putString("commandID",commandID);
+            pumpResultBundle.putBundle(RT2Const.IPC.commandResponseKey,serviceResult.getMap());
+            Intent intent = new Intent(RT2Const.serviceLocal.INTENT_sessionCompleted);
+            intent.putExtra(RT2Const.IPC.bundleKey,pumpResultBundle);
+            LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            Log.d(TAG, "handleMessage: Received message " + msg);
+            Bundle commandBundle = msg.getData();
+            switch(msg.what) {
+                case startSession_signal: // always true
+                    String commandString = commandBundle.getString(RT2Const.IPC.commandKey);
+                    if ("ReadPumpClock".equals(commandString)) {
+                        ReadPumpClockResult pumpResponse = getPumpRTC();
+                        if (pumpResponse != null) {
+                            Log.i(TAG, "ReadPumpClock: " + pumpResponse.getTimeString());
+                        } else {
+                            Log.e(TAG, "handleServiceCommand(" + commandString + ") pumpResponse is null");
+                        }
+                        sendReply(commandBundle,pumpResponse);
+                    } else if ("RetrieveHistoryPage".equals(commandString)) {
+                        int pageNumber = commandBundle.getInt("pageNumber");
+                        Page page = getPumpHistoryPage(pageNumber);
+                        RetrieveHistoryPageResult result = new RetrieveHistoryPageResult();
+                        result.setResultOK();
+                        result.setPageBundle(page.pack());
+                        sendReply(commandBundle, result);
+                    } else if ("ReadISFProfile" .equals(commandString)) {
+                        ISFTable table = getPumpISFProfile();
+                        ServiceResult result = new ServiceResult();
+                        if (table.isValid()) {
+                            // convert from ISFTable to ISFProfile
+                            Bundle map = result.getMap();
+                            map.putIntArray("times", table.getTimes());
+                            map.putFloatArray("rates", table.getRates());
+                            map.putString("ValidDate", TimeFormat.standardFormatter().print(table.getValidDate()));
+                            result.setMap(map);
+                            result.setResultOK();
+                        }
+                        sendReply(commandBundle,result);
+                    }
+                default:
+                    Log.e(TAG,"handleMessage: unknown 'what' in message: "+msg.what);
+                    super.handleMessage(msg);
+            }
+        }
+
+    }
+
 
     public void testPageDecode() {
         byte[] raw = new byte[] {(byte)0x6D, (byte)0x62, (byte)0x10, (byte)0x05, (byte)0x0C, (byte)0x00, (byte)0xE8, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,

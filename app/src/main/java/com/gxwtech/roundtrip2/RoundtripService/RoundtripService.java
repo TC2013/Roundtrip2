@@ -9,7 +9,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PowerManager;
@@ -22,23 +21,20 @@ import com.gxwtech.roundtrip2.RT2Const;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLink.PumpManager;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RileyLinkBLE;
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.ISFTable;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.PumpHistoryManager;
-import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpMessage;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
 import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
+import com.gxwtech.roundtrip2.ServiceData.RetrieveHistoryPageResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
-
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 
 /**
@@ -91,6 +87,7 @@ public class RoundtripService extends Service {
 
         // get most recently used pumpID
         pumpIDString = sharedPref.getString(RT2Const.serviceLocal.pumpIDKey,"000000");
+        // FIXME +++ hardcoding pump ID here
         pumpIDBytes = ByteUtil.fromHexString(pumpIDString);
         if (pumpIDBytes.length != 3) {
             Log.e(TAG,"Invalid pump ID? " + ByteUtil.shortHexString(pumpIDBytes));
@@ -132,7 +129,7 @@ public class RoundtripService extends Service {
                             rfspy.startReader(); // call startReader from outside?
                             Log.i(TAG, "Announcing RileyLink open For business");
                             serviceConnection.sendMessage(RT2Const.IPC.MSG_BLE_RileyLinkReady);
-                            pumpManager = new PumpManager(rfspy, pumpIDBytes);
+                            pumpManager = new PumpManager(context, rfspy, pumpIDBytes);
                             setPumpManagerToLastKnownGoodFrequency();
                             PumpModel reportedPumpModel = pumpManager.getPumpModel();
                             if (!reportedPumpModel.equals(PumpModel.UNSET)) {
@@ -154,6 +151,9 @@ public class RoundtripService extends Service {
                         } else if (RT2Const.IPC.MSG_BLE_useThisDevice.equals(action)) {
                             Bundle bundle = intent.getBundleExtra(RT2Const.IPC.bundleKey);
                             String deviceAddress = bundle.getString(RT2Const.IPC.MSG_BLE_useThisDevice_addressKey);
+                            //+++ FIXME hardcoding Rileylink address
+                            //deviceAddress = "00:07:80:2D:9E:F4";
+
                             if (deviceAddress == null) {
                                 Log.e(TAG,"handleIPCMessage: null RL address passed");
                             } else {
@@ -189,7 +189,10 @@ public class RoundtripService extends Service {
                                     FileOutputStream outputStream;
                                     try {
                                         outputStream = openFileOutput(filename, 0);
-                                        outputStream.write(mHistoryPages.get(i).getRawData());
+                                        byte[] rawData= mHistoryPages.get(i).getRawData();
+                                        if (rawData != null) {
+                                            outputStream.write(rawData);
+                                        }
                                         outputStream.close();
                                     } catch (FileNotFoundException fnf) {
                                         fnf.printStackTrace();
@@ -274,15 +277,26 @@ public class RoundtripService extends Service {
                                 serviceConnection.sendMessage(msg,null/*broadcast*/);
 
                             }
-                        } else if (RT2Const.IPC.MSG_PUMP_useThisAddress.equals(action)) {
-                            Bundle bundle = intent.getBundleExtra(RT2Const.IPC.bundleKey);
-                            String idString = bundle.getString("pumpID");
-                            if ((idString != null) && (idString.length() == 6)) {
-                                setPumpIDString(idString);
-                            }
                         } else if (RT2Const.IPC.MSG_ServiceCommand.equals(action)) {
                             Bundle bundle = intent.getBundleExtra(RT2Const.IPC.bundleKey);
                             handleServiceCommand(bundle);
+                        } else if (RT2Const.serviceLocal.INTENT_sessionCompleted.equals(action)) {
+                            Bundle bundle = intent.getBundleExtra(RT2Const.IPC.bundleKey);
+                            if (bundle != null) {
+                                Bundle commandBundle = bundle.getBundle("commandBundle");
+                                if (commandBundle != null) {
+                                    Bundle responseBundle = bundle.getBundle(RT2Const.IPC.commandResponseKey);
+                                    if (responseBundle != null) {
+                                        sendServiceCommandResponse(bundle,responseBundle);
+                                    } else {
+                                        Log.e(TAG, "sessionCompleted: no response bundle in bundle!");
+                                    }
+                                } else {
+                                    Log.e(TAG,"sessionCompleted: no command bundle in bundle!");
+                                }
+                            } else {
+                                Log.e(TAG,"sessionCompleted: no bundle!");
+                            }
                         } else {
                             Log.e(TAG, "Unhandled broadcast: action=" + action);
                         }
@@ -303,15 +317,17 @@ public class RoundtripService extends Service {
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_useThisAddress);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_fetchSavedHistory);
         intentFilter.addAction(RT2Const.IPC.MSG_ServiceCommand);
+        intentFilter.addAction(RT2Const.serviceLocal.INTENT_sessionCompleted);
 
         LocalBroadcastManager.getInstance(mContext).registerReceiver(mBroadcastReceiver, intentFilter);
 
         Log.d(TAG, "onCreate(): It's ALIVE!");
 
+        /*
         if (mRileylinkAddress.length() > 0) {
             rileyLinkBLE.findRileyLink(mRileylinkAddress);
         }
-
+        */
 
     }
 
@@ -447,23 +463,53 @@ public class RoundtripService extends Service {
         serviceConnection.sendMessage(RT2Const.IPC.MSG_PUMP_pumpFound);
     }
 
-    private void handleServiceCommand(Bundle messageBundle) {
-        // messageBundle also has our "reply-to" hash.
-        Bundle commandBundle = messageBundle.getBundle(RT2Const.IPC.bundleKey);
-        String commandString = commandBundle.getString("command");
-        if ("ReadPumpClock".equals(commandString)) {
-            ReadPumpClockResult pumpResponse = pumpManager.getPumpRTC();
-            if (pumpResponse != null) {
-                Log.i(TAG,"ReadPumpClock: " + pumpResponse.getTimeString());
+    private void routeCommandToPump(Bundle messageBundle) {
+        if (pumpManager != null) {
+            Message message = Message.obtain();
+            message.what = PumpManager.startSession_signal;
+            message.setData(messageBundle);
+            if (pumpManager.handlePumpCommand(message)) {
+                // pump manager accepted command
             } else {
-                Log.e(TAG,"handleServiceCommand("+commandString+") pumpResponse is null");
+                ServiceResult result = new ServiceResult();
+                result.setResultError(ServiceResult.ERROR_PUMP_BUSY);
+                sendServiceCommandResponse(messageBundle,result.getMap());
             }
-            sendServiceCommandResponse(messageBundle,pumpResponse);
+        } else {
+            Log.e(TAG,"Command failed: no pump manager?");
         }
     }
 
+    private void handleServiceCommand(Bundle messageBundle) {
+        // messageBundle also has our "reply-to" hash.
 
-    private void sendServiceCommandResponse(Bundle originalIntentBundle, ServiceResult serviceResult) {
+        Bundle commandBundle = messageBundle.getBundle(RT2Const.IPC.bundleKey);
+        String commandString = commandBundle.getString("command");
+        if ("ReadPumpClock".equals(commandString)) {
+            // This is a pump command, so send it there for processing.
+            routeCommandToPump(messageBundle);
+        } else if ("RetrieveHistoryPage".equals(commandString)) {
+            routeCommandToPump(messageBundle);
+        } else if ("ReadISFProfile" .equals(commandString)) {
+            routeCommandToPump(messageBundle);
+        } else if ("SetPumpID".equals(commandString)) {
+            // This one is a command to RoundtripService, not to the PumpManager
+            String pumpID = commandBundle.getString("pumpID");
+            ServiceResult result = new ServiceResult();
+            if (pumpID != null) {
+                setPumpIDString(pumpID);
+                result.setResultOK();
+            } else {
+                Log.e(TAG, "handleServiceCommand: SetPumpID bundle missing 'pumpID' value");
+            }
+            sendServiceCommandResponse(messageBundle,result.getMap());
+        } else {
+            Log.e(TAG,"handleServiceCommand: Failed to handle service command '"+commandString+"'");
+        }
+    }
+
+    private void sendServiceCommandResponse(Bundle originalIntentBundle, Bundle responseMap) {
+
         // convert from Intent bundle to Message bundle
         if (originalIntentBundle == null) return;
         // get the key (hashcode) of the client who requested this
@@ -476,7 +522,7 @@ public class RoundtripService extends Service {
         // put the original command into the reply (why not?)
         serviceResultBundle.putBundle("command",originalCommandBundle);
         serviceResultBundle.putString("commandID",commandID);
-        serviceResultBundle.putBundle("response",serviceResult.getResponseBundle());
+        serviceResultBundle.putBundle("response",responseMap);
         serviceResultBundle.putString(RT2Const.IPC.messageKey, RT2Const.IPC.MSG_ServiceResult);
 
         serviceConnection.sendMessageBundle(serviceResultBundle,clientHashcode);

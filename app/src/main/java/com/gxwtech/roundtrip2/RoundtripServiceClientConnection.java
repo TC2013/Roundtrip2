@@ -15,6 +15,9 @@ import android.util.Log;
 
 import com.gxwtech.roundtrip2.ServiceData.ServiceCommand;
 
+import org.joda.time.DateTime;
+import org.joda.time.Instant;
+
 /**
  * Created by geoff on 6/11/16.
  */
@@ -44,6 +47,7 @@ public class RoundtripServiceClientConnection {
                 case RT2Const.IPC.MSG_IPC:
                     Log.d(TAG,"handleMessage: Received IPC message from service");
                     intent = new Intent(bundle.getString(RT2Const.IPC.messageKey));
+                    bundle.putLong(RT2Const.IPC.instantKey,Instant.now().getMillis());
                     intent.putExtra(RT2Const.IPC.bundleKey,bundle);
                     LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
                     break;
@@ -124,19 +128,19 @@ public class RoundtripServiceClientConnection {
         if (!mBound) {
             Log.e(TAG,"sendServiceCommand: cannot send command -- not yet bound to service");
         }
-        Bundle commandBundle = command.getParameters();
+        Bundle commandBundle = command.getMap();
 
         Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC, 0, 0);
         Bundle messageBundle = new Bundle();
         messageBundle.putBundle(RT2Const.IPC.bundleKey,commandBundle);
         messageBundle.putString(RT2Const.IPC.messageKey,RT2Const.IPC.MSG_ServiceCommand);
-
+        messageBundle.putLong(RT2Const.IPC.instantKey,Instant.now().getMillis());
         msg.setData(messageBundle);
         msg.replyTo = mMessenger;
         try {
             mService.send(msg);
         } catch (RemoteException e) {
-            Log.e(TAG,"sendServiceCommand: failed to send command: " + command.getParameters().getString("command"));
+            Log.e(TAG,"sendServiceCommand: failed to send command: " + command.getMap().getString("command"));
             e.printStackTrace();
             return false;
         }

@@ -11,12 +11,14 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.gxwtech.roundtrip2.HistoryActivity.HistoryPageListActivity;
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
 import com.gxwtech.roundtrip2.ServiceData.ServiceClientActions;
 import com.gxwtech.roundtrip2.ServiceData.ServiceCommand;
+import com.gxwtech.roundtrip2.ServiceMessageViewActivity.ServiceMessageViewListActivity;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -46,8 +48,11 @@ public class MainActivity extends AppCompatActivity {
                         Intent intent;
 
                         if (RT2Const.local.INTENT_serviceConnected.equals(action)) {
-
-                            sendPUMP_useThisDevice("518163");
+                            ServiceCommand cmd = ServiceClientActions.makeSetPumpIDCommand("518163");
+                            roundtripServiceClientConnection.sendServiceCommand(cmd);
+                            //sendPUMP_useThisDevice("518163");
+                            //ServiceCommand rlcmd = ServiceClientActions.makeUseThisRileylinkCommand("00:07:80:2D:9E:F4");
+                            //roundtripServiceClientConnection.sendServiceCommand(rlcmd);
                             sendBLEuseThisDevice("00:07:80:2D:9E:F4"); // for automated testing
                         } else if (RT2Const.IPC.MSG_BLE_RileyLinkReady.equals(action)) {
                             setRileylinkStatusMessage("OK");
@@ -72,7 +77,20 @@ public class MainActivity extends AppCompatActivity {
                             sendHistoryIntent.putExtra(RT2Const.IPC.MSG_PUMP_history_key, storeForHistoryViewer);
                             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(sendHistoryIntent);
                         } else if (RT2Const.IPC.MSG_ServiceResult.equals(action)) {
+                            showBusy("Idle",0);
                             Log.i(TAG,"Received ServiceResult");
+                            Bundle bundle = receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey);
+                            if (bundle != null) {
+                                String keystring = "{";
+                                for (String key : bundle.keySet()) {
+                                    keystring += key;
+                                    keystring += ",";
+                                }
+                                keystring += "}";
+                                Log.e(TAG,RT2Const.IPC.MSG_ServiceResult + ": " + keystring);
+                            } else {
+                                Log.e(TAG,RT2Const.IPC.MSG_ServiceResult + ": expected bundle named '"+RT2Const.IPC.bundleKey+"'");
+                            }
                         } else {
                             Log.e(TAG,"Unrecognized intent action: " + action);
                         }
@@ -176,11 +194,17 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG,"doUnbindService: unbinding.");
     }
 
-    /*
-    *
-    *  GUI element functions
-    *
+    /**
+     *
+     *  GUI element functions
+     *
      */
+    void showBusy(String activityString, int progress) {
+        TextView tv = (TextView)findViewById(R.id.textViewActivity);
+        tv.setText(activityString);
+        ProgressBar pb = (ProgressBar)findViewById(R.id.progressBarCommandActivity);
+        pb.setProgress(progress);
+    }
 
     void setRileylinkStatusMessage(String statusMessage) {
         TextView field = (TextView)findViewById(R.id.textViewFieldRileyLink);
@@ -205,8 +229,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onReadPumpClockButtonClicked(View view) {
+        showBusy("Reading Pump Clock",50);
         ServiceCommand readPumpClockCommand = ServiceClientActions.makeReadPumpClockCommand();
         roundtripServiceClientConnection.sendServiceCommand(readPumpClockCommand);
+    }
+
+    public void onGetISFProfileButtonClicked(View view) {
+        ServiceCommand getISFProfileCommand = ServiceClientActions.makeReadISFProfileCommand();
+        roundtripServiceClientConnection.sendServiceCommand(getISFProfileCommand);
+    }
+
+    public void onViewEventLogButtonClicked(View view) {
+        startActivity(new Intent(getApplicationContext(),ServiceMessageViewListActivity.class));
     }
 
 }

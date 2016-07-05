@@ -14,6 +14,11 @@ public class ReadPumpClockResult extends ServiceResult {
     private static final String TAG="ReadPumpClockResult";
     public ReadPumpClockResult() {}
 
+    @Override
+    public void init() {
+        map.putString("ServiceMessageType","ReadPumpClockResult");
+    }
+
     public void setTime(LocalDateTime pumpTime) {
         Bundle map = getMap();
         DateTimeFormatter fmt = DateTimeFormat.forStyle("FF");

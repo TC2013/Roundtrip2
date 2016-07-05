@@ -29,10 +29,10 @@ public class ServiceClientActions {
 
     public static ServiceCommand makeSetTempBasalCommand(double amountUnitsPerHour, int durationMinutes) {
         ServiceCommand command = new ServiceCommand("SetTempBasal",makeRandomID());
-        Bundle b = command.getParameters();
+        Bundle b = command.getMap();
         b.putDouble("amountUnitsPerHour",amountUnitsPerHour);
         b.putInt("durationMinutes",durationMinutes);
-        command.setParameters(b);
+        command.setMap(b);
         return command;
     }
 
@@ -49,9 +49,9 @@ public class ServiceClientActions {
     // 'which' is "STD", "A", or "B"
     public static ServiceCommand makeReadBasalProfileCommand(String which) {
         ServiceCommand command = new ServiceCommand("ReadBasalProfile",makeRandomID());
-        Bundle b = command.getParameters();
+        Bundle b = command.getMap();
         b.putString("which",which);
-        command.setParameters(b);
+        command.setMap(b);
         return command;
     }
 
@@ -61,17 +61,17 @@ public class ServiceClientActions {
 
     public static ServiceCommand makeSendBolusCommand(double amountUnits) {
         ServiceCommand command = new ServiceCommand("SendBolus",makeRandomID());
-        Bundle b = command.getParameters();
+        Bundle b = command.getMap();
         b.putDouble("amountInUnits",amountUnits);
-        command.setParameters(b);
+        command.setMap(b);
         return command;
     }
 
     public static ServiceCommand makeSetPumpClockCommand(LocalDateTime localDateTime) {
         ServiceCommand command = new ServiceCommand("SetPumpClock",makeRandomID());
-        Bundle b = command.getParameters();
+        Bundle b = command.getMap();
         b.putString("localDateTime",localDateTime.toString());
-        command.setParameters(b);
+        command.setMap(b);
         return command;
     }
 
@@ -93,6 +93,30 @@ public class ServiceClientActions {
 
     public static ServiceCommand makeReadReservoirLevelCommand() {
         return new ServiceCommand("ReadReservoirLevel",makeRandomID());
+    }
+
+    public static ServiceCommand makeSetPumpIDCommand(String pumpID) {
+        ServiceCommand cmd = new ServiceCommand("SetPumpID",makeRandomID());
+        Bundle b = cmd.getMap();
+        b.putString("pumpID",pumpID);
+        cmd.setMap(b);
+        return cmd;
+    }
+
+    public static ServiceCommand makeUseThisRileylinkCommand(String rlAddress) {
+        ServiceCommand cmd = new ServiceCommand("UseThisRileylink",makeRandomID());
+        Bundle b = cmd.getMap();
+        b.putString("rlAddress",rlAddress);
+        cmd.setMap(b);
+        return cmd;
+    }
+
+    public static ServiceCommand makeRetrieveHistoryPageCommand(int pageNumber) {
+        ServiceCommand cmd = new ServiceCommand("RetrieveHistoryPage",makeRandomID());
+        Bundle b = cmd.getMap();
+        b.putInt("pageNumber",pageNumber);
+        cmd.setMap(b);
+        return cmd;
     }
 
 }
