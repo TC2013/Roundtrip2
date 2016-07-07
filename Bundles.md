@@ -68,7 +68,7 @@ This is the top level bundle used for passing Service messages over the IPC inte
 
 ### command = "SendBolus"
 
-(String) "amountInUnits"
+(String) "amountUnits"
 
 > amount (in Units) of the bolus
 

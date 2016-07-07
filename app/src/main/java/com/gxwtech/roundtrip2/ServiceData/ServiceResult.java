@@ -1,6 +1,7 @@
 package com.gxwtech.roundtrip2.ServiceData;
 
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 
 import java.util.HashMap;
 
@@ -9,6 +10,13 @@ import java.util.HashMap;
  */
 public class ServiceResult extends ServiceMessage {
     public ServiceResult() { init(); }
+    public ServiceResult(Bundle resultBundle) {
+        if (resultBundle != null) {
+            setMap(resultBundle);
+        } else {
+            init();
+        }
+    }
 
     @Override
     public void init() {
@@ -42,5 +50,16 @@ public class ServiceResult extends ServiceMessage {
             case ERROR_PUMP_BUSY: return "A pump command session is already in progress";
             default: return "Unknown error code (" + errorCode + ")";
         }
+    }
+
+    public boolean resultIsOK() {
+        return ("OK".equals(map.getString("result","")));
+    }
+    public String getErrorDescription() {
+        return map.getString("errorDescription","");
+    }
+
+    public String getResult() {
+        return map.getString("result","");
     }
 }

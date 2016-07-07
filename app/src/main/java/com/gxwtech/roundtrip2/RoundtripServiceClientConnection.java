@@ -14,6 +14,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.gxwtech.roundtrip2.ServiceData.ServiceCommand;
+import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 
 import org.joda.time.DateTime;
 import org.joda.time.Instant;
@@ -40,15 +41,15 @@ public class RoundtripServiceClientConnection {
                 case RT2Const.IPC.MSG_clientRegistered:
                     // Service has registered us. Communication lines are open.
                     mBound = true;
-                    //
                     intent = new Intent(RT2Const.local.INTENT_serviceConnected);
                     LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
                     break;
                 case RT2Const.IPC.MSG_IPC:
-                    Log.d(TAG,"handleMessage: Received IPC message from service");
-                    intent = new Intent(bundle.getString(RT2Const.IPC.messageKey));
-                    bundle.putLong(RT2Const.IPC.instantKey,Instant.now().getMillis());
-                    intent.putExtra(RT2Const.IPC.bundleKey,bundle);
+                    // broadcast contents of message as an intent
+                    ServiceTransport transport = new ServiceTransport(msg.getData());
+                    Log.d(TAG,"Client received IPC message, bouncing to local: " + transport.describeContentsShort());
+                    intent = new Intent(transport.getTransportType());
+                    intent.putExtra(RT2Const.IPC.bundleKey,transport.getMap());
                     LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
                     break;
                 default:
@@ -77,8 +78,6 @@ public class RoundtripServiceClientConnection {
             Log.d(TAG,"Sent registration message to service");
         }
 
-
-
         @Override
         public void onServiceDisconnected(ComponentName className) {
             mService = null;
@@ -105,42 +104,27 @@ public class RoundtripServiceClientConnection {
         }
     }
 
-    public boolean sendMessage(Bundle bundle) {
-        if (!mBound) {
-            Log.e(TAG,"sendMessage: cannot send message -- not yet bound to service");
-        }
-        // Create a Message
-        Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC, 0, 0);
-        // Set payload
-        msg.setData(bundle);
-        msg.replyTo = mMessenger;
-        // Send the Message to the Service (in another process)
-        try {
-            mService.send(msg);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-            return false;
-        }
-        return true;
-    }
-
     public boolean sendServiceCommand(ServiceCommand command) {
         if (!mBound) {
             Log.e(TAG,"sendServiceCommand: cannot send command -- not yet bound to service");
+            return false;
         }
-        Bundle commandBundle = command.getMap();
+
+        ServiceTransport transport = new ServiceTransport();
+        Log.d(TAG,"client sending message: " + transport.describeContentsShort());
+
+        // can't set sender hashcode -- Service will do that.
+        transport.setServiceCommand(command);
+        transport.setTransportType(RT2Const.IPC.MSG_ServiceCommand);
 
         Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC, 0, 0);
-        Bundle messageBundle = new Bundle();
-        messageBundle.putBundle(RT2Const.IPC.bundleKey,commandBundle);
-        messageBundle.putString(RT2Const.IPC.messageKey,RT2Const.IPC.MSG_ServiceCommand);
-        messageBundle.putLong(RT2Const.IPC.instantKey,Instant.now().getMillis());
-        msg.setData(messageBundle);
+
+        msg.setData(transport.getMap());
         msg.replyTo = mMessenger;
         try {
             mService.send(msg);
         } catch (RemoteException e) {
-            Log.e(TAG,"sendServiceCommand: failed to send command: " + command.getMap().getString("command"));
+            Log.e(TAG,"sendServiceCommand: failed to send message");
             e.printStackTrace();
             return false;
         }

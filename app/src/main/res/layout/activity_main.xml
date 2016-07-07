@@ -44,8 +44,20 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textAppearance="?android:attr/textAppearanceMedium"
-                android:text="Idle"
+                android:text="Connecting to Service"
                 android:id="@+id/textViewActivity" />
+
+            <Space
+                android:layout_width="20px"
+                android:layout_height="20px" />
+
+            <ProgressBar
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:indeterminate="true"
+                android:indeterminateBehavior="cycle"
+                android:id="@+id/progressBarSpinny" />
 
         </LinearLayout>
 
@@ -98,12 +110,29 @@
                 android:id="@+id/textViewFieldPump" />
         </LinearLayout>
 
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Read Pump Clock"
-            android:id="@+id/buttonReadPumpClock"
-            android:onClick="onReadPumpClockButtonClicked"/>
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Read Pump Clock"
+                android:id="@+id/buttonReadPumpClock"
+                android:onClick="onReadPumpClockButtonClicked"/>
+
+            <Space
+                android:layout_width="20px"
+                android:layout_height="20px" />
+
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:text=""
+                android:id="@+id/textViewPumpClockTime" />
+        </LinearLayout>
 
         <Button
             android:layout_width="wrap_content"

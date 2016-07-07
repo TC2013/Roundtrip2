@@ -28,7 +28,10 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
 import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
 import com.gxwtech.roundtrip2.ServiceData.RetrieveHistoryPageResult;
+import com.gxwtech.roundtrip2.ServiceData.ServiceCommand;
+import com.gxwtech.roundtrip2.ServiceData.ServiceNotification;
 import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
+import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 
 import java.io.FileInputStream;
@@ -88,6 +91,7 @@ public class RoundtripService extends Service {
         // get most recently used pumpID
         pumpIDString = sharedPref.getString(RT2Const.serviceLocal.pumpIDKey,"000000");
         // FIXME +++ hardcoding pump ID here
+        pumpIDString = "518163";
         pumpIDBytes = ByteUtil.fromHexString(pumpIDString);
         if (pumpIDBytes.length != 3) {
             Log.e(TAG,"Invalid pump ID? " + ByteUtil.shortHexString(pumpIDBytes));
@@ -128,14 +132,14 @@ public class RoundtripService extends Service {
                             rfspy = new RFSpy(context, rileyLinkBLE);
                             rfspy.startReader(); // call startReader from outside?
                             Log.i(TAG, "Announcing RileyLink open For business");
-                            serviceConnection.sendMessage(RT2Const.IPC.MSG_BLE_RileyLinkReady);
+                            serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_BLE_RileyLinkReady),null);
                             pumpManager = new PumpManager(context, rfspy, pumpIDBytes);
                             setPumpManagerToLastKnownGoodFrequency();
                             PumpModel reportedPumpModel = pumpManager.getPumpModel();
                             if (!reportedPumpModel.equals(PumpModel.UNSET)) {
-                                serviceConnection.sendMessage(RT2Const.IPC.MSG_PUMP_pumpFound);
+                                serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_PUMP_pumpFound),null);
                             } else {
-                                serviceConnection.sendMessage(RT2Const.IPC.MSG_PUMP_pumpLost);
+                                serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_PUMP_pumpLost),null);
                             }
                         } else if (action.equals(RT2Const.serviceLocal.ipcBound)) {
                             // If we still need permission for bluetooth, ask now.
@@ -148,33 +152,6 @@ public class RoundtripService extends Service {
                             //BluetoothInit();
                         } else if (RT2Const.IPC.MSG_BLE_accessDenied.equals(action)) {
                             stopSelf(); // This will stop the service.
-                        } else if (RT2Const.IPC.MSG_BLE_useThisDevice.equals(action)) {
-                            Bundle bundle = intent.getBundleExtra(RT2Const.IPC.bundleKey);
-                            String deviceAddress = bundle.getString(RT2Const.IPC.MSG_BLE_useThisDevice_addressKey);
-                            //+++ FIXME hardcoding Rileylink address
-                            //deviceAddress = "00:07:80:2D:9E:F4";
-
-                            if (deviceAddress == null) {
-                                Log.e(TAG,"handleIPCMessage: null RL address passed");
-                            } else {
-                                Toast.makeText(mContext, "Using RL " + deviceAddress, Toast.LENGTH_SHORT).show();
-                                Log.d(TAG,"handleIPCMessage: Using RL " + deviceAddress);
-                                if (mBluetoothAdapter == null) {
-                                    mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-                                }
-                                if (mBluetoothAdapter != null) {
-                                    if (mBluetoothAdapter.isEnabled()) {
-                                        // FIXME: this may be a long running function:
-                                        rileyLinkBLE.findRileyLink(deviceAddress);
-                                        // If successful, we will get a broadcast from RileyLinkBLE: RT2Const.serviceLocal.bluetooth_connected
-                                    } else {
-                                        Log.e(TAG, "Bluetooth is not enabled.");
-                                    }
-                                } else {
-                                    Log.e(TAG, "Failed to get adapter");
-                                }
-
-                            }
                         } else if (action.equals(RT2Const.IPC.MSG_PUMP_tunePump)) {
                             doTunePump();
                         } else if (action.equals(RT2Const.IPC.MSG_PUMP_quickTune)) {
@@ -279,21 +256,13 @@ public class RoundtripService extends Service {
                             }
                         } else if (RT2Const.IPC.MSG_ServiceCommand.equals(action)) {
                             Bundle bundle = intent.getBundleExtra(RT2Const.IPC.bundleKey);
-                            handleServiceCommand(bundle);
+
+                            handleIncomingServiceTransport(new ServiceTransport(bundle));
                         } else if (RT2Const.serviceLocal.INTENT_sessionCompleted.equals(action)) {
                             Bundle bundle = intent.getBundleExtra(RT2Const.IPC.bundleKey);
                             if (bundle != null) {
-                                Bundle commandBundle = bundle.getBundle("commandBundle");
-                                if (commandBundle != null) {
-                                    Bundle responseBundle = bundle.getBundle(RT2Const.IPC.commandResponseKey);
-                                    if (responseBundle != null) {
-                                        sendServiceCommandResponse(bundle,responseBundle);
-                                    } else {
-                                        Log.e(TAG, "sessionCompleted: no response bundle in bundle!");
-                                    }
-                                } else {
-                                    Log.e(TAG,"sessionCompleted: no command bundle in bundle!");
-                                }
+                                ServiceTransport transport = new ServiceTransport(bundle);
+                                serviceConnection.sendTransport(transport, transport.getSenderHashcode());
                             } else {
                                 Log.e(TAG,"sessionCompleted: no bundle!");
                             }
@@ -456,76 +425,123 @@ public class RoundtripService extends Service {
     }
 
     private void sendBLERequestForAccess() {
-        serviceConnection.sendMessage(RT2Const.IPC.MSG_BLE_requestAccess);
+        //serviceConnection.sendMessage(RT2Const.IPC.MSG_BLE_requestAccess);
     }
 
     private void reportPumpFound() {
-        serviceConnection.sendMessage(RT2Const.IPC.MSG_PUMP_pumpFound);
+        //serviceConnection.sendMessage(RT2Const.IPC.MSG_PUMP_pumpFound);
     }
 
-    private void routeCommandToPump(Bundle messageBundle) {
+    /*
+    private void routeCommandToPump(ServiceTransport transport) {
         if (pumpManager != null) {
             Message message = Message.obtain();
             message.what = PumpManager.startSession_signal;
-            message.setData(messageBundle);
+            message.setData(transport.getMap());
             if (pumpManager.handlePumpCommand(message)) {
                 // pump manager accepted command
             } else {
                 ServiceResult result = new ServiceResult();
                 result.setResultError(ServiceResult.ERROR_PUMP_BUSY);
-                sendServiceCommandResponse(messageBundle,result.getMap());
+                sendServiceTransportResponse(transport,result);
             }
         } else {
             Log.e(TAG,"Command failed: no pump manager?");
         }
     }
+    */
 
-    private void handleServiceCommand(Bundle messageBundle) {
-        // messageBundle also has our "reply-to" hash.
-
-        Bundle commandBundle = messageBundle.getBundle(RT2Const.IPC.bundleKey);
-        String commandString = commandBundle.getString("command");
-        if ("ReadPumpClock".equals(commandString)) {
-            // This is a pump command, so send it there for processing.
-            routeCommandToPump(messageBundle);
-        } else if ("RetrieveHistoryPage".equals(commandString)) {
-            routeCommandToPump(messageBundle);
-        } else if ("ReadISFProfile" .equals(commandString)) {
-            routeCommandToPump(messageBundle);
-        } else if ("SetPumpID".equals(commandString)) {
+    private void handleIncomingServiceTransport(ServiceTransport serviceTransport) {
+        if (serviceTransport.getServiceCommand().isPumpCommand()) {
+            //routeCommandToPump(serviceTransport);
+            String commandString = serviceTransport.getOriginalCommandName();
+            if ("ReadPumpClock".equals(commandString)) {
+                ReadPumpClockResult pumpResponse = pumpManager.getPumpRTC();
+                if (pumpResponse != null) {
+                    Log.i(TAG, "ReadPumpClock: " + pumpResponse.getTimeString());
+                } else {
+                    Log.e(TAG, "handleServiceCommand(" + commandString + ") pumpResponse is null");
+                }
+                //serviceTransport.setServiceResult(pumpResponse);
+                sendServiceTransportResponse(serviceTransport,pumpResponse);
+            } else if ("RetrieveHistoryPage".equals(commandString)) {
+                int pageNumber = serviceTransport.getServiceCommand().getMap().getInt("pageNumber");
+                Page page = pumpManager.getPumpHistoryPage(pageNumber);
+                RetrieveHistoryPageResult result = new RetrieveHistoryPageResult();
+                result.setResultOK();
+                result.setPageBundle(page.pack());
+                //serviceTransport.setServiceResult(result);
+                sendServiceTransportResponse(serviceTransport,result);
+            } else if ("ReadISFProfile" .equals(commandString)) {
+                ISFTable table = pumpManager.getPumpISFProfile();
+                ServiceResult result = new ServiceResult();
+                if (table.isValid()) {
+                    // convert from ISFTable to ISFProfile
+                    Bundle map = result.getMap();
+                    map.putIntArray("times", table.getTimes());
+                    map.putFloatArray("rates", table.getRates());
+                    map.putString("ValidDate", TimeFormat.standardFormatter().print(table.getValidDate()));
+                    result.setMap(map);
+                    result.setResultOK();
+                }
+                //serviceTransport.setServiceResult(result);
+                //sendReply(serviceTransport);
+                sendServiceTransportResponse(serviceTransport,result);
+            }
+        } else if ("SetPumpID".equals(serviceTransport.getOriginalCommandName())) {
             // This one is a command to RoundtripService, not to the PumpManager
-            String pumpID = commandBundle.getString("pumpID");
+            String pumpID = serviceTransport.getServiceCommand().getMap().getString("pumpID", "");
             ServiceResult result = new ServiceResult();
-            if (pumpID != null) {
+            if ((pumpID != null) && (pumpID.length() == 6)) {
                 setPumpIDString(pumpID);
                 result.setResultOK();
             } else {
-                Log.e(TAG, "handleServiceCommand: SetPumpID bundle missing 'pumpID' value");
+                Log.e(TAG, "handleIncomingServiceTransport: SetPumpID bundle missing 'pumpID' value");
+                result.setResultError(-1, "Invalid parameter (missing pumpID)");
             }
-            sendServiceCommandResponse(messageBundle,result.getMap());
+            sendServiceTransportResponse(serviceTransport, result);
+        } else if ("UseThisRileylink".equals(serviceTransport.getOriginalCommandName())) {
+
+            String deviceAddress = serviceTransport.getServiceCommand().getMap().getString("rlAddress");
+            //+++ FIXME hardcoding Rileylink address
+            //deviceAddress = "00:07:80:2D:9E:F4";
+
+            if (deviceAddress == null) {
+                Log.e(TAG,"handleIPCMessage: null RL address passed");
+            } else {
+                Toast.makeText(mContext, "Using RL " + deviceAddress, Toast.LENGTH_SHORT).show();
+                Log.d(TAG,"handleIPCMessage: Using RL " + deviceAddress);
+                if (mBluetoothAdapter == null) {
+                    mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                }
+                if (mBluetoothAdapter != null) {
+                    if (mBluetoothAdapter.isEnabled()) {
+                        // FIXME: this may be a long running function:
+                        rileyLinkBLE.findRileyLink(deviceAddress);
+                        // If successful, we will get a broadcast from RileyLinkBLE: RT2Const.serviceLocal.bluetooth_connected
+                    } else {
+                        Log.e(TAG, "Bluetooth is not enabled.");
+                    }
+                } else {
+                    Log.e(TAG, "Failed to get adapter");
+                }
+
+            }
+
         } else {
-            Log.e(TAG,"handleServiceCommand: Failed to handle service command '"+commandString+"'");
+            Log.e(TAG,"handleIncomingServiceTransport: Failed to handle service command '"+serviceTransport.getOriginalCommandName()+"'");
         }
     }
 
-    private void sendServiceCommandResponse(Bundle originalIntentBundle, Bundle responseMap) {
-
-        // convert from Intent bundle to Message bundle
-        if (originalIntentBundle == null) return;
+    private void sendServiceTransportResponse(ServiceTransport transport, ServiceResult serviceResult) {
         // get the key (hashcode) of the client who requested this
-        Integer clientHashcode = originalIntentBundle.getInt(RT2Const.serviceLocal.IPCReplyTo_hashCodeKey);
+
+        Integer clientHashcode = transport.getSenderHashcode();
         // make a new bundle to send as the message data
         Bundle serviceResultBundle = new Bundle();
-        // get the original command bundle that was sent to us
-        Bundle originalCommandBundle = originalIntentBundle.getBundle(RT2Const.IPC.bundleKey);
-        String commandID = originalCommandBundle.getString("commandID");
-        // put the original command into the reply (why not?)
-        serviceResultBundle.putBundle("command",originalCommandBundle);
-        serviceResultBundle.putString("commandID",commandID);
-        serviceResultBundle.putBundle("response",responseMap);
-        serviceResultBundle.putString(RT2Const.IPC.messageKey, RT2Const.IPC.MSG_ServiceResult);
-
-        serviceConnection.sendMessageBundle(serviceResultBundle,clientHashcode);
+        transport.setServiceResult(serviceResult);
+        transport.setTransportType(RT2Const.IPC.MSG_ServiceResult);
+        serviceConnection.sendTransport(transport,clientHashcode);
     }
 
 }

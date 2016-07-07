@@ -10,7 +10,13 @@ import android.os.Bundle;
 public class ServiceMessage {
     protected Bundle map = new Bundle();
     public ServiceMessage() { init(); }
-    public void init() { map.putString("ServiceMessageType","base"); }
+    public void init() {
+        map.putString("ServiceMessageClass",this.getClass().getCanonicalName());
+        map.putString("ServiceMessageType",this.getClass().getSimpleName());
+    }
     public Bundle getMap() { return map; }
     public void setMap(Bundle map) { this.map = map; }
+    public String getServiceMessageType() {
+        return map.getString("ServiceMessageType");
+    }
 }

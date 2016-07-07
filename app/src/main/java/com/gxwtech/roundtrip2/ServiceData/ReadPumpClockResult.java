@@ -53,4 +53,9 @@ public class ReadPumpClockResult extends ServiceResult {
         }
         return "";
     }
+
+    public void initFromServiceResult(ServiceResult serviceResult) {
+        setMap(serviceResult.getMap());
+    }
+
 }

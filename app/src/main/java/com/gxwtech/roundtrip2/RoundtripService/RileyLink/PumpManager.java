@@ -32,6 +32,7 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
 import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
 import com.gxwtech.roundtrip2.ServiceData.RetrieveHistoryPageResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
+import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 import com.gxwtech.roundtrip2.util.StringUtil;
 
@@ -45,7 +46,7 @@ import java.util.ArrayList;
 /**
  * Created by geoff on 5/30/16.
  */
-public class PumpManager extends Thread {
+public class PumpManager {
     private static final String TAG = "PumpManager";
     public double[] scanFrequencies = {916.45, 916.50, 916.55, 916.60, 916.65, 916.70, 916.75, 916.80};
     public static final int startSession_signal = 6656; // arbitrary.
@@ -54,24 +55,10 @@ public class PumpManager extends Thread {
     private byte[] pumpID;
     public boolean DEBUG_PUMPMANAGER = true;
     private final Context context;
-    private Handler serviceCommandHandler;
     public PumpManager(Context context, RFSpy rfspy, byte[] pumpID) {
         this.context = context;
         this.rfspy = rfspy;
         this.pumpID = pumpID;
-    }
-
-    @Override
-    public void run() {
-        Looper.prepare();
-        serviceCommandHandler = new PumpCommandHandler();
-        Looper.loop();
-    }
-
-    public boolean handlePumpCommand(Message msg) {
-        if (serviceCommandHandler == null) return false;
-        serviceCommandHandler.sendMessage(msg);
-        return true;
     }
 
     private PumpMessage runCommandWithArgs(PumpMessage msg) {
@@ -449,29 +436,20 @@ _
 
     // This allows us to run pump commands asynchronously from caller's thread.
     private class PumpCommandHandler extends Handler {
-        private void sendReply(Bundle originalMessageBundle, ServiceResult serviceResult) {
-            // convert from Intent bundle to Message bundle
-            if (originalMessageBundle == null) return;
-            // make a new bundle to send as the message data
-            Bundle pumpResultBundle = new Bundle();
-            // get the original command bundle that was sent to us
-            String commandID = originalMessageBundle.getString("commandID");
-            // put the original command into the reply (why not?)
-            pumpResultBundle.putBundle("commandBundle",originalMessageBundle);
-            pumpResultBundle.putString("commandID",commandID);
-            pumpResultBundle.putBundle(RT2Const.IPC.commandResponseKey,serviceResult.getMap());
+        private void sendReply(ServiceTransport transport) {
             Intent intent = new Intent(RT2Const.serviceLocal.INTENT_sessionCompleted);
-            intent.putExtra(RT2Const.IPC.bundleKey,pumpResultBundle);
+            intent.putExtra(RT2Const.IPC.bundleKey,transport.getMap());
+            Log.d(TAG,"sendReply: " + transport.describeContentsShort());
             LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
         }
 
         @Override
         public void handleMessage(Message msg) {
-            Log.d(TAG, "handleMessage: Received message " + msg);
-            Bundle commandBundle = msg.getData();
+            ServiceTransport transport = new ServiceTransport(msg.getData());
+            Log.d(TAG, "pumpQueue : " + transport.describeContentsShort());
             switch(msg.what) {
                 case startSession_signal: // always true
-                    String commandString = commandBundle.getString(RT2Const.IPC.commandKey);
+                    String commandString = transport.getOriginalCommandName();
                     if ("ReadPumpClock".equals(commandString)) {
                         ReadPumpClockResult pumpResponse = getPumpRTC();
                         if (pumpResponse != null) {
@@ -479,14 +457,16 @@ _
                         } else {
                             Log.e(TAG, "handleServiceCommand(" + commandString + ") pumpResponse is null");
                         }
-                        sendReply(commandBundle,pumpResponse);
+                        transport.setServiceResult(pumpResponse);
+                        sendReply(transport);
                     } else if ("RetrieveHistoryPage".equals(commandString)) {
-                        int pageNumber = commandBundle.getInt("pageNumber");
+                        int pageNumber = transport.getServiceCommand().getMap().getInt("pageNumber");
                         Page page = getPumpHistoryPage(pageNumber);
                         RetrieveHistoryPageResult result = new RetrieveHistoryPageResult();
                         result.setResultOK();
                         result.setPageBundle(page.pack());
-                        sendReply(commandBundle, result);
+                        transport.setServiceResult(result);
+                        sendReply(transport);
                     } else if ("ReadISFProfile" .equals(commandString)) {
                         ISFTable table = getPumpISFProfile();
                         ServiceResult result = new ServiceResult();
@@ -499,8 +479,10 @@ _
                             result.setMap(map);
                             result.setResultOK();
                         }
-                        sendReply(commandBundle,result);
+                        transport.setServiceResult(result);
+                        sendReply(transport);
                     }
+                    break;
                 default:
                     Log.e(TAG,"handleMessage: unknown 'what' in message: "+msg.what);
                     super.handleMessage(msg);

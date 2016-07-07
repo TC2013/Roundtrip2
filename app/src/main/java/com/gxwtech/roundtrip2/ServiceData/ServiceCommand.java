@@ -17,6 +17,16 @@ public class ServiceCommand extends ServiceMessage {
         map.putString("command",commandName);
         map.putString("commandID",commandID);
     }
+    public ServiceCommand(Bundle commandBundle) {
+        if (commandBundle != null) {
+            map = commandBundle;
+        } else {
+            map = new Bundle();
+            init();
+            map.putString("command","(null)");
+            map.putString("commandID", "(null");
+        }
+    }
 
     @Override
     public void init() {
@@ -28,5 +38,13 @@ public class ServiceCommand extends ServiceMessage {
     }
     public String getCommandName() {
         return map.getString("command");
+    }
+
+    public boolean isPumpCommand() {
+        String commandName = getCommandName();
+        if ("ReadPumpClock".equals(commandName)) return true;
+        if ("RetrieveHistoryPage".equals(commandName)) return true;
+        if ("ReadISFProfile".equals(commandName)) return true;
+        return false;
     }
 }

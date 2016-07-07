@@ -25,7 +25,7 @@ public class RT2Const {
         // key for the "command" string in a bundle
         public static final String commandKey = Prefix + "commandKey";
         // key for the command-response bundle in a result bundle
-        public static final String commandResponseKey = Prefix + "commandResponse";
+        public static final String serviceResultKey = Prefix + "commandResponse";
 
         // used by gui to pass the address of the Rileylink to the Service
         // has an 'address' field with the string address.
@@ -61,6 +61,7 @@ public class RT2Const {
         // interface for ServiceCommand/ServiceResult
         public static final String MSG_ServiceCommand = Prefix + "MSG_ServiceCommand";
         public static final String MSG_ServiceResult = Prefix + "MSG_ServiceResult";
+        public static final String MSG_ServiceNotification = Prefix + "MSG_ServiceNotification";
 
     }
     public class local {

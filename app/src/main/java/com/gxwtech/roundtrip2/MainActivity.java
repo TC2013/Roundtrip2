@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -16,8 +17,12 @@ import android.widget.TextView;
 
 import com.gxwtech.roundtrip2.HistoryActivity.HistoryPageListActivity;
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
+import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceClientActions;
 import com.gxwtech.roundtrip2.ServiceData.ServiceCommand;
+import com.gxwtech.roundtrip2.ServiceData.ServiceNotification;
+import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
+import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 import com.gxwtech.roundtrip2.ServiceMessageViewActivity.ServiceMessageViewListActivity;
 
 public class MainActivity extends AppCompatActivity {
@@ -48,25 +53,15 @@ public class MainActivity extends AppCompatActivity {
                         Intent intent;
 
                         if (RT2Const.local.INTENT_serviceConnected.equals(action)) {
+                            showIdle();
                             ServiceCommand cmd = ServiceClientActions.makeSetPumpIDCommand("518163");
+                            showBusy("Configuring Service",50);
                             roundtripServiceClientConnection.sendServiceCommand(cmd);
                             //sendPUMP_useThisDevice("518163");
                             //ServiceCommand rlcmd = ServiceClientActions.makeUseThisRileylinkCommand("00:07:80:2D:9E:F4");
                             //roundtripServiceClientConnection.sendServiceCommand(rlcmd);
-                            sendBLEuseThisDevice("00:07:80:2D:9E:F4"); // for automated testing
-                        } else if (RT2Const.IPC.MSG_BLE_RileyLinkReady.equals(action)) {
-                            setRileylinkStatusMessage("OK");
-                        } else if (RT2Const.IPC.MSG_BLE_requestAccess.equals(action)) {
-                            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-                        } else if (RT2Const.IPC.MSG_PUMP_pumpFound.equals(action)) {
-                            setPumpStatusMessage("OK");
-                        } else if (RT2Const.IPC.MSG_PUMP_pumpLost.equals(action)) {
-                            setPumpStatusMessage("Lost");
-                        } else if (RT2Const.IPC.MSG_PUMP_reportedPumpModel.equals(action)) {
-                            Bundle bundle = receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey);
-                            String modelString = bundle.getString("model", "(unknown)");
-                            setPumpStatusMessage(modelString);
+                            roundtripServiceClientConnection.sendServiceCommand(
+                                    ServiceClientActions.makeUseThisRileylinkCommand("00:07:80:2D:9E:F4"));
                         } else if (RT2Const.IPC.MSG_PUMP_history.equals(action)) {
                             Intent launchHistoryViewIntent = new Intent(context,HistoryPageListActivity.class);
                             storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
@@ -77,19 +72,36 @@ public class MainActivity extends AppCompatActivity {
                             sendHistoryIntent.putExtra(RT2Const.IPC.MSG_PUMP_history_key, storeForHistoryViewer);
                             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(sendHistoryIntent);
                         } else if (RT2Const.IPC.MSG_ServiceResult.equals(action)) {
-                            showBusy("Idle",0);
-                            Log.i(TAG,"Received ServiceResult");
+                            showBusy("Idle", 0);
+                            Log.i(TAG, "Received ServiceResult");
+
                             Bundle bundle = receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey);
-                            if (bundle != null) {
-                                String keystring = "{";
-                                for (String key : bundle.keySet()) {
-                                    keystring += key;
-                                    keystring += ",";
+                            ServiceTransport transport = new ServiceTransport(bundle);
+                            if (transport.commandDidCompleteOK()) {
+                                if ("ReadPumpClock".equals(transport.getOriginalCommandName())) {
+                                    ReadPumpClockResult clockResult = new ReadPumpClockResult();
+                                    clockResult.initFromServiceResult(transport.getServiceResult());
+                                    TextView pumpTimeTextView = (TextView) findViewById(R.id.textViewPumpClockTime);
+                                    pumpTimeTextView.setText(clockResult.getTimeString());
+                                } else {
+                                    Log.e(TAG,"Dunno what to do with this command completion: " + transport.getOriginalCommandName());
                                 }
-                                keystring += "}";
-                                Log.e(TAG,RT2Const.IPC.MSG_ServiceResult + ": " + keystring);
                             } else {
-                                Log.e(TAG,RT2Const.IPC.MSG_ServiceResult + ": expected bundle named '"+RT2Const.IPC.bundleKey+"'");
+                                Log.e(TAG,"Command failed? " + transport.getOriginalCommandName());
+                            }
+                        } else if (RT2Const.IPC.MSG_ServiceNotification.equals(action)) {
+                            ServiceTransport transport = new ServiceTransport(receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey));
+                            ServiceNotification notification = transport.getServiceNotification();
+                            String note = notification.getNotificationType();
+                            if (RT2Const.IPC.MSG_BLE_RileyLinkReady.equals(note)) {
+                                showIdle();
+                                setRileylinkStatusMessage("OK");
+                            } else if (RT2Const.IPC.MSG_PUMP_pumpFound.equals(note)) {
+                                setPumpStatusMessage("OK");
+                            } else if (RT2Const.IPC.MSG_PUMP_pumpLost.equals(note)) {
+                                setPumpStatusMessage("Lost");
+                            } else {
+                                Log.e(TAG,"Unrecognized Notification: '" + note + "'");
                             }
                         } else {
                             Log.e(TAG,"Unrecognized intent action: " + action);
@@ -101,13 +113,16 @@ public class MainActivity extends AppCompatActivity {
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(RT2Const.local.INTENT_serviceConnected);
+        /*
         intentFilter.addAction(RT2Const.IPC.MSG_BLE_RileyLinkReady);
         intentFilter.addAction(RT2Const.IPC.MSG_BLE_requestAccess);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_pumpFound);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_pumpLost);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_reportedPumpModel);
         intentFilter.addAction(RT2Const.IPC.MSG_PUMP_history);
+        */
         intentFilter.addAction(RT2Const.IPC.MSG_ServiceResult);
+        intentFilter.addAction(RT2Const.IPC.MSG_ServiceNotification);
         intentFilter.addAction(RT2Const.local.INTENT_historyPageViewerReady);
 
         LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, intentFilter);
@@ -123,8 +138,12 @@ public class MainActivity extends AppCompatActivity {
         startService(bindIntent);
         // bind to the service for ease of message passing.
         doBindService();
+
+        linearProgressBar = (ProgressBar)findViewById(R.id.progressBarCommandActivity);
+        spinnyProgressBar = (ProgressBar)findViewById(R.id.progressBarSpinny);
     }
 
+    /*
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -140,14 +159,18 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+    */
 
+    /*
     private boolean sendMessage(Bundle bundle) {
         return roundtripServiceClientConnection.sendMessage(bundle);
     }
+*/
 
     /* Functions for sending messages to RoundtripService */
 
     // send one-liner message to RoundtripService
+    /*
     private void sendIPCMessage(String ipcMsgType) {
         // Create a bundle with the data
         Bundle bundle = new Bundle();
@@ -158,7 +181,9 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG,"sendIPCMessage: send failed");
         }
     }
+    */
 
+    /*
     private void sendBLEaccessGranted() { sendIPCMessage(RT2Const.IPC.MSG_BLE_accessGranted); }
 
     private void sendBLEaccessDenied() { sendIPCMessage(RT2Const.IPC.MSG_BLE_accessDenied); }
@@ -179,7 +204,7 @@ public class MainActivity extends AppCompatActivity {
         sendMessage(bundle);
         Log.d(TAG,"sendPUMP_useThisDevice: " + pumpIDString);
     }
-
+*/
     public void doBindService() {
         bindService(new Intent(this,RoundtripService.class),
                 roundtripServiceClientConnection.getServiceConnection(),
@@ -199,11 +224,37 @@ public class MainActivity extends AppCompatActivity {
      *  GUI element functions
      *
      */
+
+
+    private int mProgress = 0;
+    private int mSpinnyProgress = 0;
+    private ProgressBar linearProgressBar;
+    private ProgressBar spinnyProgressBar;
+    private static final int spinnyFPS = 10;
     void showBusy(String activityString, int progress) {
+        mProgress = progress;
         TextView tv = (TextView)findViewById(R.id.textViewActivity);
         tv.setText(activityString);
-        ProgressBar pb = (ProgressBar)findViewById(R.id.progressBarCommandActivity);
-        pb.setProgress(progress);
+        linearProgressBar.setProgress(progress);
+        if (progress > 0) {
+            spinnyProgressBar.setVisibility(View.VISIBLE);
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while ((mProgress > 0) && (mProgress < 100)) {
+                        mSpinnyProgress += 100 / spinnyFPS;
+                        spinnyProgressBar.setProgress(mSpinnyProgress);
+                        SystemClock.sleep(1000/spinnyFPS);
+                    }
+                }
+            }).start();
+        } else {
+            spinnyProgressBar.setVisibility(View.INVISIBLE);
+        }
+    }
+
+    void showIdle() {
+        showBusy("Idle",0);
     }
 
     void setRileylinkStatusMessage(String statusMessage) {
@@ -217,15 +268,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onTunePumpButtonClicked(View view) {
-        sendIPCMessage(RT2Const.IPC.MSG_PUMP_tunePump);
+        //sendIPCMessage(RT2Const.IPC.MSG_PUMP_tunePump);
     }
 
     public void onFetchHistoryButtonClicked(View view) {
-        sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchHistory);
+        //sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchHistory);
     }
 
     public void onFetchSavedHistoryButtonClicked(View view) {
-        sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchSavedHistory);
+        //sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchSavedHistory);
     }
 
     public void onReadPumpClockButtonClicked(View view) {
