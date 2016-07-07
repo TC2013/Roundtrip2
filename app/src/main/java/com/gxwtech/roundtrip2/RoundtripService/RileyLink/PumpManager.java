@@ -1,16 +1,9 @@
 package com.gxwtech.roundtrip2.RoundtripService.RileyLink;
 
 import android.content.Context;
-import android.content.Intent;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.os.SystemClock;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import com.gxwtech.roundtrip2.RT2Const;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpyResponse;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RadioPacket;
@@ -28,11 +21,8 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.Record;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpMessage;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
-import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
 import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
-import com.gxwtech.roundtrip2.ServiceData.RetrieveHistoryPageResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
-import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 import com.gxwtech.roundtrip2.util.StringUtil;
 
@@ -96,9 +86,6 @@ public class PumpManager {
         RawHistoryPage rval = new RawHistoryPage();
         wakeup(6);
         PumpMessage getHistoryMsg = makePumpMessage(new MessageType(MessageType.CMD_M_READ_HISTORY), new GetHistoryPageCarelinkMessageBody(pageNumber));
-        //
-        //PumpMessage msg = makePumpMessage(new byte[]{MessageType.CMD_M_READ_HISTORY,1,(byte)pageNumber,2,2});
-        //PumpMessage msg = makePumpMessage(new MessageType(MessageType.CMD_M_READ_HISTORY),tryit);
         Log.i(TAG,"getPumpHistoryPage("+pageNumber+"): "+ByteUtil.shortHexString(getHistoryMsg.getTxData()));
         PumpMessage firstResponse = runCommandWithArgs(getHistoryMsg);
         Log.i(TAG,"getPumpHistoryPage("+pageNumber+"): " + ByteUtil.shortHexString(firstResponse.getContents()));
@@ -389,33 +376,6 @@ public class PumpManager {
             Log.e(TAG,"No pump response during scan.");
             return 0.0;
         }
-/*
-        // Use ternary search to find frequency with maximum RSSI.
-func searchFrequencies(pump *medtronic.Pump) uint32 {
-        pump.SetRetries(1)
-        lower := startFreq
-        upper := endFreq
-        for {
-                delta := upper - lower
-                if delta < precision {
-                        return (lower + upper) / 2
-                }
-                delta /= 3
-                lowerThird := lower + delta
-                r1 := tryFrequency(pump, lowerThird)
-                upperThird := upper - delta
-                r2 := tryFrequency(pump, upperThird)
-                if r1 < r2 {
-                        lower = lowerThird
-                } else {
-                        upper = upperThird
-                }
-        }
-}
-
-_
-*/
-
     }
 
     private PumpMessage makePumpMessage(MessageType messageType, MessageBody messageBody) {
@@ -433,64 +393,6 @@ _
         msg.init(ByteUtil.concat(ByteUtil.concat(new byte[]{(byte)0xa7},pumpID),typeAndBody));
         return msg;
     }
-
-    // This allows us to run pump commands asynchronously from caller's thread.
-    private class PumpCommandHandler extends Handler {
-        private void sendReply(ServiceTransport transport) {
-            Intent intent = new Intent(RT2Const.serviceLocal.INTENT_sessionCompleted);
-            intent.putExtra(RT2Const.IPC.bundleKey,transport.getMap());
-            Log.d(TAG,"sendReply: " + transport.describeContentsShort());
-            LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
-        }
-
-        @Override
-        public void handleMessage(Message msg) {
-            ServiceTransport transport = new ServiceTransport(msg.getData());
-            Log.d(TAG, "pumpQueue : " + transport.describeContentsShort());
-            switch(msg.what) {
-                case startSession_signal: // always true
-                    String commandString = transport.getOriginalCommandName();
-                    if ("ReadPumpClock".equals(commandString)) {
-                        ReadPumpClockResult pumpResponse = getPumpRTC();
-                        if (pumpResponse != null) {
-                            Log.i(TAG, "ReadPumpClock: " + pumpResponse.getTimeString());
-                        } else {
-                            Log.e(TAG, "handleServiceCommand(" + commandString + ") pumpResponse is null");
-                        }
-                        transport.setServiceResult(pumpResponse);
-                        sendReply(transport);
-                    } else if ("RetrieveHistoryPage".equals(commandString)) {
-                        int pageNumber = transport.getServiceCommand().getMap().getInt("pageNumber");
-                        Page page = getPumpHistoryPage(pageNumber);
-                        RetrieveHistoryPageResult result = new RetrieveHistoryPageResult();
-                        result.setResultOK();
-                        result.setPageBundle(page.pack());
-                        transport.setServiceResult(result);
-                        sendReply(transport);
-                    } else if ("ReadISFProfile" .equals(commandString)) {
-                        ISFTable table = getPumpISFProfile();
-                        ServiceResult result = new ServiceResult();
-                        if (table.isValid()) {
-                            // convert from ISFTable to ISFProfile
-                            Bundle map = result.getMap();
-                            map.putIntArray("times", table.getTimes());
-                            map.putFloatArray("rates", table.getRates());
-                            map.putString("ValidDate", TimeFormat.standardFormatter().print(table.getValidDate()));
-                            result.setMap(map);
-                            result.setResultOK();
-                        }
-                        transport.setServiceResult(result);
-                        sendReply(transport);
-                    }
-                    break;
-                default:
-                    Log.e(TAG,"handleMessage: unknown 'what' in message: "+msg.what);
-                    super.handleMessage(msg);
-            }
-        }
-
-    }
-
 
     public void testPageDecode() {
         byte[] raw = new byte[] {(byte)0x6D, (byte)0x62, (byte)0x10, (byte)0x05, (byte)0x0C, (byte)0x00, (byte)0xE8, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,

@@ -90,8 +90,6 @@ public class RoundtripService extends Service {
 
         // get most recently used pumpID
         pumpIDString = sharedPref.getString(RT2Const.serviceLocal.pumpIDKey,"000000");
-        // FIXME +++ hardcoding pump ID here
-        pumpIDString = "518163";
         pumpIDBytes = ByteUtil.fromHexString(pumpIDString);
         if (pumpIDBytes.length != 3) {
             Log.e(TAG,"Invalid pump ID? " + ByteUtil.shortHexString(pumpIDBytes));
@@ -291,13 +289,6 @@ public class RoundtripService extends Service {
         LocalBroadcastManager.getInstance(mContext).registerReceiver(mBroadcastReceiver, intentFilter);
 
         Log.d(TAG, "onCreate(): It's ALIVE!");
-
-        /*
-        if (mRileylinkAddress.length() > 0) {
-            rileyLinkBLE.findRileyLink(mRileylinkAddress);
-        }
-        */
-
     }
 
     @Nullable
@@ -432,28 +423,8 @@ public class RoundtripService extends Service {
         //serviceConnection.sendMessage(RT2Const.IPC.MSG_PUMP_pumpFound);
     }
 
-    /*
-    private void routeCommandToPump(ServiceTransport transport) {
-        if (pumpManager != null) {
-            Message message = Message.obtain();
-            message.what = PumpManager.startSession_signal;
-            message.setData(transport.getMap());
-            if (pumpManager.handlePumpCommand(message)) {
-                // pump manager accepted command
-            } else {
-                ServiceResult result = new ServiceResult();
-                result.setResultError(ServiceResult.ERROR_PUMP_BUSY);
-                sendServiceTransportResponse(transport,result);
-            }
-        } else {
-            Log.e(TAG,"Command failed: no pump manager?");
-        }
-    }
-    */
-
     private void handleIncomingServiceTransport(ServiceTransport serviceTransport) {
         if (serviceTransport.getServiceCommand().isPumpCommand()) {
-            //routeCommandToPump(serviceTransport);
             String commandString = serviceTransport.getOriginalCommandName();
             if ("ReadPumpClock".equals(commandString)) {
                 ReadPumpClockResult pumpResponse = pumpManager.getPumpRTC();
@@ -462,7 +433,6 @@ public class RoundtripService extends Service {
                 } else {
                     Log.e(TAG, "handleServiceCommand(" + commandString + ") pumpResponse is null");
                 }
-                //serviceTransport.setServiceResult(pumpResponse);
                 sendServiceTransportResponse(serviceTransport,pumpResponse);
             } else if ("RetrieveHistoryPage".equals(commandString)) {
                 int pageNumber = serviceTransport.getServiceCommand().getMap().getInt("pageNumber");
@@ -470,7 +440,6 @@ public class RoundtripService extends Service {
                 RetrieveHistoryPageResult result = new RetrieveHistoryPageResult();
                 result.setResultOK();
                 result.setPageBundle(page.pack());
-                //serviceTransport.setServiceResult(result);
                 sendServiceTransportResponse(serviceTransport,result);
             } else if ("ReadISFProfile" .equals(commandString)) {
                 ISFTable table = pumpManager.getPumpISFProfile();
@@ -484,8 +453,6 @@ public class RoundtripService extends Service {
                     result.setMap(map);
                     result.setResultOK();
                 }
-                //serviceTransport.setServiceResult(result);
-                //sendReply(serviceTransport);
                 sendServiceTransportResponse(serviceTransport,result);
             }
         } else if ("SetPumpID".equals(serviceTransport.getOriginalCommandName())) {
@@ -503,8 +470,6 @@ public class RoundtripService extends Service {
         } else if ("UseThisRileylink".equals(serviceTransport.getOriginalCommandName())) {
 
             String deviceAddress = serviceTransport.getServiceCommand().getMap().getString("rlAddress");
-            //+++ FIXME hardcoding Rileylink address
-            //deviceAddress = "00:07:80:2D:9E:F4";
 
             if (deviceAddress == null) {
                 Log.e(TAG,"handleIPCMessage: null RL address passed");
@@ -525,9 +490,7 @@ public class RoundtripService extends Service {
                 } else {
                     Log.e(TAG, "Failed to get adapter");
                 }
-
             }
-
         } else {
             Log.e(TAG,"handleIncomingServiceTransport: Failed to handle service command '"+serviceTransport.getOriginalCommandName()+"'");
         }
@@ -535,10 +498,8 @@ public class RoundtripService extends Service {
 
     private void sendServiceTransportResponse(ServiceTransport transport, ServiceResult serviceResult) {
         // get the key (hashcode) of the client who requested this
-
         Integer clientHashcode = transport.getSenderHashcode();
         // make a new bundle to send as the message data
-        Bundle serviceResultBundle = new Bundle();
         transport.setServiceResult(serviceResult);
         transport.setTransportType(RT2Const.IPC.MSG_ServiceResult);
         serviceConnection.sendTransport(transport,clientHashcode);
