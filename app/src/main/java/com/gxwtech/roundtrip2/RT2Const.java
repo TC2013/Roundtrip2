@@ -63,6 +63,11 @@ public class RT2Const {
         public static final String MSG_ServiceResult = Prefix + "MSG_ServiceResult";
         public static final String MSG_ServiceNotification = Prefix + "MSG_ServiceNotification";
 
+        // These are notifications to GUIs to let them know what's happening
+        public static final String MSG_note_Idle = Prefix + "MSG_note_Idle";
+        public static final String MSG_note_FindingRileyLink = Prefix + "MSG_note_FindingRileyLink";
+        public static final String MSG_note_WakingPump = Prefix + "MSG_note_WakingPump";
+
     }
     public class local {
         // These are local to the GUI activities

@@ -122,11 +122,13 @@ public class RoundtripService extends Service {
                         Log.e(TAG,"onReceive: null action");
                     } else {
                         if (action.equals(RT2Const.serviceLocal.bluetooth_connected)) {
+                            serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_note_FindingRileyLink),null);
                             rileyLinkBLE.discoverServices();
                             // If this is successful,
                             // We will get a broadcast of RT2Const.serviceLocal.BLE_services_discovered
                         } else if (action.equals(RT2Const.serviceLocal.BLE_services_discovered)) {
                             rileyLinkBLE.enableNotifications();
+                            serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_note_WakingPump),null);
                             rfspy = new RFSpy(context, rileyLinkBLE);
                             rfspy.startReader(); // call startReader from outside?
                             Log.i(TAG, "Announcing RileyLink open For business");
@@ -139,6 +141,7 @@ public class RoundtripService extends Service {
                             } else {
                                 serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_PUMP_pumpLost),null);
                             }
+                            serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_note_Idle),null);
                         } else if (action.equals(RT2Const.serviceLocal.ipcBound)) {
                             // If we still need permission for bluetooth, ask now.
                             if (needBluetoothPermission) {
