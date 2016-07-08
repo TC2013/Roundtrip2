@@ -19,6 +19,13 @@ public class RT2Const {
         public static final String messageKey = Prefix + "messageKey";
         // used as a key for the bundle, when the bundle is packed into an Intent
         public static final String bundleKey = Prefix + "bundleKey";
+        // a field to hold the instant (milliseconds since 1970) the message
+        // was sent or received by the CLIENT
+        public static final String instantKey = Prefix + "instantKey";
+        // key for the "command" string in a bundle
+        public static final String commandKey = Prefix + "commandKey";
+        // key for the command-response bundle in a result bundle
+        public static final String serviceResultKey = Prefix + "commandResponse";
 
         // used by gui to pass the address of the Rileylink to the Service
         // has an 'address' field with the string address.
@@ -54,6 +61,12 @@ public class RT2Const {
         // interface for ServiceCommand/ServiceResult
         public static final String MSG_ServiceCommand = Prefix + "MSG_ServiceCommand";
         public static final String MSG_ServiceResult = Prefix + "MSG_ServiceResult";
+        public static final String MSG_ServiceNotification = Prefix + "MSG_ServiceNotification";
+
+        // These are notifications to GUIs to let them know what's happening
+        public static final String MSG_note_Idle = Prefix + "MSG_note_Idle";
+        public static final String MSG_note_FindingRileyLink = Prefix + "MSG_note_FindingRileyLink";
+        public static final String MSG_note_WakingPump = Prefix + "MSG_note_WakingPump";
 
     }
     public class local {
@@ -68,6 +81,7 @@ public class RT2Const {
     public class serviceLocal {
         public static final String Prefix = RT2Prefix + "serviceLocal.";
         // for local broadcasts annoucing connectivity events
+        public static final String INTENT_seekRileylink = Prefix + "INTENT_seekRileylink";
         public static final String bluetooth_connected = Prefix + "bluetooth_connected";
         public static final String bluetooth_disconnected = Prefix + "bluetooth_disconnected";
         public static final String BLE_services_discovered = Prefix + "BLE_services_discovered";
@@ -84,6 +98,10 @@ public class RT2Const {
 
         // The the key to identify the hashCode() of the msg.replyTo, when the bundle is moved to an intent.
         public static final String IPCReplyTo_hashCodeKey = Prefix + "IPCReplyTo_hashCodeKey";
+
+        // This is sent from the PumpManager to RoundtripService at the completion of a pump command session.
+        public static final String INTENT_sessionCompleted = Prefix + "INTENT_sessionCompleted";
+
 
     }
 }

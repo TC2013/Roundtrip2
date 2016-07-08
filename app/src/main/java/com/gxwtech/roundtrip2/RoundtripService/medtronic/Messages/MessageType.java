@@ -21,6 +21,7 @@ public class MessageType {
     public static final byte ReadTime        = (byte)0x70;
     public static final byte GetBattery      = (byte)0x72;
     public static final byte GetHistoryPage  = (byte)0x80;
+    public static final byte GetISFProfile   = (byte)0x8b;
     public static final byte GetPumpModel    = (byte)0x8d;
     public static final byte ReadTempBasal   = (byte)0x98;
     public static final byte ReadSettings    = (byte)0xc0;

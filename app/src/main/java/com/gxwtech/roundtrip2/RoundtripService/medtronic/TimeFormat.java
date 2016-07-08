@@ -4,6 +4,8 @@ import android.util.Log;
 
 import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 /**
  * Created by geoff on 6/4/16.
@@ -12,8 +14,9 @@ public class TimeFormat {
     private static final boolean DEBUG_TIMEFORMAT = false;
     private static final String TAG = "TimeFormat";
     public TimeFormat() { }
-    public void test() {
-
+    public static final String standardFormatString = "YYYY-MM-ddTHH:mm:ss";
+    public static DateTimeFormatter standardFormatter() {
+        return DateTimeFormat.forPattern(standardFormatString);
     }
 
     public static LocalDate parse2ByteDate(byte[] data, int offset) throws org.joda.time.IllegalFieldValueException {

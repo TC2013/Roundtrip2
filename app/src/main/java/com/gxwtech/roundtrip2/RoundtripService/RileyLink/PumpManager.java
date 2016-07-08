@@ -1,5 +1,6 @@
 package com.gxwtech.roundtrip2.RoundtripService.RileyLink;
 
+import android.content.Context;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -15,6 +16,7 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.Messages.MessageBody;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.Messages.MessageType;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.Messages.PumpAckMessageBody;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PacketType;
+import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.ISFTable;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.Record;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpMessage;
@@ -37,11 +39,14 @@ import java.util.ArrayList;
 public class PumpManager {
     private static final String TAG = "PumpManager";
     public double[] scanFrequencies = {916.45, 916.50, 916.55, 916.60, 916.65, 916.70, 916.75, 916.80};
+    public static final int startSession_signal = 6656; // arbitrary.
     private long pumpAwakeUntil = 0;
     private final RFSpy rfspy;
     private byte[] pumpID;
     public boolean DEBUG_PUMPMANAGER = true;
-    public PumpManager(RFSpy rfspy, byte[] pumpID) {
+    private final Context context;
+    public PumpManager(Context context, RFSpy rfspy, byte[] pumpID) {
+        this.context = context;
         this.rfspy = rfspy;
         this.pumpID = pumpID;
     }
@@ -81,9 +86,6 @@ public class PumpManager {
         RawHistoryPage rval = new RawHistoryPage();
         wakeup(6);
         PumpMessage getHistoryMsg = makePumpMessage(new MessageType(MessageType.CMD_M_READ_HISTORY), new GetHistoryPageCarelinkMessageBody(pageNumber));
-        //
-        //PumpMessage msg = makePumpMessage(new byte[]{MessageType.CMD_M_READ_HISTORY,1,(byte)pageNumber,2,2});
-        //PumpMessage msg = makePumpMessage(new MessageType(MessageType.CMD_M_READ_HISTORY),tryit);
         Log.i(TAG,"getPumpHistoryPage("+pageNumber+"): "+ByteUtil.shortHexString(getHistoryMsg.getTxData()));
         PumpMessage firstResponse = runCommandWithArgs(getHistoryMsg);
         Log.i(TAG,"getPumpHistoryPage("+pageNumber+"): " + ByteUtil.shortHexString(firstResponse.getContents()));
@@ -204,6 +206,15 @@ public class PumpManager {
         }
 
         return rval;
+    }
+
+
+    public ISFTable getPumpISFProfile() {
+        PumpMessage getISFProfileMessage = makePumpMessage(new MessageType(MessageType.GetISFProfile),new CarelinkShortMessageBody());
+        PumpMessage resp = sendAndListen(getISFProfileMessage);
+        ISFTable table = new ISFTable();
+        table.parseFrom(resp.getContents());
+        return table;
     }
 
     public void tryoutPacket(byte[] pkt) {
@@ -365,33 +376,6 @@ public class PumpManager {
             Log.e(TAG,"No pump response during scan.");
             return 0.0;
         }
-/*
-        // Use ternary search to find frequency with maximum RSSI.
-func searchFrequencies(pump *medtronic.Pump) uint32 {
-        pump.SetRetries(1)
-        lower := startFreq
-        upper := endFreq
-        for {
-                delta := upper - lower
-                if delta < precision {
-                        return (lower + upper) / 2
-                }
-                delta /= 3
-                lowerThird := lower + delta
-                r1 := tryFrequency(pump, lowerThird)
-                upperThird := upper - delta
-                r2 := tryFrequency(pump, upperThird)
-                if r1 < r2 {
-                        lower = lowerThird
-                } else {
-                        upper = upperThird
-                }
-        }
-}
-
-_
-*/
-
     }
 
     private PumpMessage makePumpMessage(MessageType messageType, MessageBody messageBody) {
