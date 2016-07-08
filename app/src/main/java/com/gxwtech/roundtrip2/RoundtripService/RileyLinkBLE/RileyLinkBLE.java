@@ -14,6 +14,7 @@ import android.content.Intent;
 import android.os.SystemClock;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.gxwtech.roundtrip2.RT2Const;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.BLECommOperations.BLECommOperation;
@@ -33,7 +34,7 @@ import java.util.concurrent.Semaphore;
  */
 public class RileyLinkBLE {
     private static final String TAG = "RileyLinkBLE";
-    public boolean gattDebugEnabled = false;
+    public boolean gattDebugEnabled = true;
 
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothGattCallback bluetoothGattCallback;
@@ -243,16 +244,21 @@ public class RileyLinkBLE {
     }
 
     public void findRileyLink(String RileyLinkAddress) {
-        rileyLinkDevice =  bluetoothAdapter.getRemoteDevice(RileyLinkAddress);
+        rileyLinkDevice = bluetoothAdapter.getRemoteDevice(RileyLinkAddress);
         // if this succeeds, we get a connection state change callback?
         connectGatt();
     }
 
     // This function must be run on UI thread.
     public void connectGatt() {
-        bluetoothConnectionGatt = rileyLinkDevice.connectGatt(context, false, bluetoothGattCallback);
-        if (gattDebugEnabled) {
-            Log.d(TAG, "Gatt Connected?");
+        bluetoothConnectionGatt = rileyLinkDevice.connectGatt(context, true, bluetoothGattCallback);
+        if (bluetoothConnectionGatt == null) {
+            Log.e(TAG,"Failed to connect to Bluetooth Low Energy device at "+bluetoothAdapter.getAddress());
+            Toast.makeText(context, "No Rileylink at " + bluetoothAdapter.getAddress(), Toast.LENGTH_SHORT).show();
+        } else {
+            if (gattDebugEnabled) {
+                Log.d(TAG, "Gatt Connected?");
+            }
         }
     }
 

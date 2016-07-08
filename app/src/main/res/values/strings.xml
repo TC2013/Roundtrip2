@@ -3,4 +3,12 @@
     <string name="roundtrip_service_name">RoundtripService</string>
     <string name="title_historypage_list">HistoryPages</string>
     <string name="title_historypage_detail">HistoryPage Detail</string>
+    <string name="title_bledevice_list">BLEDevices</string>
+    <string name="title_bledevice_detail">BLEDevice Detail</string>
+    <string name="title_logentry_list">LogEntries</string>
+    <string name="title_logentry_detail">LogEntry Detail</string>
+    <string name="title_item_list">Items</string>
+    <string name="title_item_detail">Item Detail</string>
+    <string name="title_servicemessageview_list">ServiceMessageViews</string>
+    <string name="title_servicemessageview_detail">ServiceMessageView Detail</string>
 </resources>
