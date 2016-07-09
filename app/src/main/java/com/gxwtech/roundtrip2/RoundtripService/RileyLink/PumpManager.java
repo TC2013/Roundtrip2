@@ -8,6 +8,7 @@ import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpyResponse;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RadioPacket;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RadioResponse;
+import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.Messages.ButtonPressCarelinkMessageBody;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.Messages.CarelinkShortMessageBody;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.Messages.GetHistoryPageCarelinkMessageBody;
@@ -94,6 +95,7 @@ public class PumpManager {
         int expectedFrameNum = 1;
         while (expectedFrameNum == currentResponse.getFrameNumber()) {
             expectedFrameNum++;
+            RoundtripService.getInstance().announceProgress(((100/16) * currentResponse.getFrameNumber()+1));
             Log.i(TAG,"getPumpHistoryPage: Got frame "+currentResponse.getFrameNumber());
             rval.appendData(currentResponse.getFrameData());
             PumpMessage nextMsg = sendAndListen(ackMsg);

@@ -21,16 +21,17 @@ import com.gxwtech.roundtrip2.RT2Const;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLink.PumpManager;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RileyLinkBLE;
-import com.gxwtech.roundtrip2.RoundtripService.Tasks.RetrieveHistoryPageTaskAsync;
-import com.gxwtech.roundtrip2.RoundtripService.Tasks.RetrieveHistoryPageTaskRunnable;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.DiscoverGattServicesTask;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.InitializePumpManagerTask;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.ReadPumpClockTask;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.RetrieveHistoryPageTask;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.ServiceTask;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.ServiceTaskExecutor;
-import com.gxwtech.roundtrip2.RoundtripService.Tasks.ServiceTaskRunnable;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.ISFTable;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.PumpHistoryManager;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
-import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceNotification;
 import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
@@ -62,7 +63,7 @@ public class RoundtripService extends Service {
 
     // saved settings
 
-    private SharedPreferences sharedPref;
+    public SharedPreferences sharedPref;
     private String pumpIDString;
     private byte[] pumpIDBytes;
     private String mRileylinkAddress;
@@ -73,10 +74,10 @@ public class RoundtripService extends Service {
 
 
     // Our hardware/software connection
-    private RileyLinkBLE rileyLinkBLE; // android-bluetooth management
+    public RileyLinkBLE rileyLinkBLE; // android-bluetooth management
     private RFSpy rfspy; // interface for 916MHz radio.
     public PumpManager pumpManager; // interface to Minimed
-
+    private static ServiceTask currentTask = null;
 
     public RoundtripService() {
         super();
@@ -131,25 +132,19 @@ public class RoundtripService extends Service {
                     } else {
                         if (action.equals(RT2Const.serviceLocal.bluetooth_connected)) {
                             serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_note_FindingRileyLink),null);
-                            rileyLinkBLE.discoverServices();
+                            //                            rileyLinkBLE.discoverServices();
+                            ServiceTaskExecutor.startTask(new DiscoverGattServicesTask());
                             // If this is successful,
                             // We will get a broadcast of RT2Const.serviceLocal.BLE_services_discovered
                         } else if (action.equals(RT2Const.serviceLocal.BLE_services_discovered)) {
-                            rileyLinkBLE.enableNotifications();
                             serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_note_WakingPump),null);
+                            rileyLinkBLE.enableNotifications();
                             rfspy = new RFSpy(context, rileyLinkBLE);
                             rfspy.startReader(); // call startReader from outside?
+                            RoundtripService.getInstance().pumpManager = new PumpManager(context, rfspy, pumpIDBytes);
+                            ServiceTask task = new InitializePumpManagerTask();
+                            ServiceTaskExecutor.startTask(task);
                             Log.i(TAG, "Announcing RileyLink open For business");
-                            serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_BLE_RileyLinkReady),null);
-                            pumpManager = new PumpManager(context, rfspy, pumpIDBytes);
-                            setPumpManagerToLastKnownGoodFrequency();
-                            PumpModel reportedPumpModel = pumpManager.getPumpModel();
-                            if (!reportedPumpModel.equals(PumpModel.UNSET)) {
-                                serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_PUMP_pumpFound),null);
-                            } else {
-                                serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_PUMP_pumpLost),null);
-                            }
-                            serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_note_Idle),null);
                         } else if (action.equals(RT2Const.serviceLocal.ipcBound)) {
                             // If we still need permission for bluetooth, ask now.
                             if (needBluetoothPermission) {
@@ -340,14 +335,6 @@ public class RoundtripService extends Service {
         return lockStatic;
     }
 
-    private void setPumpManagerToLastKnownGoodFrequency() {
-        double lastGoodFrequency = sharedPref.getFloat(RT2Const.serviceLocal.prefsLastGoodPumpFrequency,(float)0.0);
-        if (lastGoodFrequency != 0) {
-            Log.i(TAG,String.format("Setting radio frequency to %.2fMHz",lastGoodFrequency));
-            pumpManager.setRadioFrequencyForPump(lastGoodFrequency);
-        }
-    }
-
     // FIXME: This needs to be run in a session so that is interruptable, has a separate thread, etc.
     private void doTunePump() {
         double lastGoodFrequency = sharedPref.getFloat(RT2Const.serviceLocal.prefsLastGoodPumpFrequency,(float)0.0);
@@ -434,10 +421,26 @@ public class RoundtripService extends Service {
         //serviceConnection.sendMessage(RT2Const.IPC.MSG_PUMP_pumpFound);
     }
 
+    public void setCurrentTask(ServiceTask task) {
+        if (currentTask == null) {
+            currentTask = task;
+        } else {
+            Log.e(TAG,"setCurrentTask: Cannot replace current task");
+        }
+    }
+
+    public void finishCurrentTask(ServiceTask task) {
+        if (task != currentTask) {
+            Log.e(TAG,"finishCurrentTask: task does not match");
+        }
+        currentTask = null;
+    }
+
     private void handleIncomingServiceTransport(ServiceTransport serviceTransport) {
         if (serviceTransport.getServiceCommand().isPumpCommand()) {
             String commandString = serviceTransport.getOriginalCommandName();
             if ("ReadPumpClock".equals(commandString)) {
+                /*
                 ReadPumpClockResult pumpResponse = pumpManager.getPumpRTC();
                 if (pumpResponse != null) {
                     Log.i(TAG, "ReadPumpClock: " + pumpResponse.getTimeString());
@@ -445,6 +448,8 @@ public class RoundtripService extends Service {
                     Log.e(TAG, "handleServiceCommand(" + commandString + ") pumpResponse is null");
                 }
                 sendServiceTransportResponse(serviceTransport,pumpResponse);
+                */
+                ServiceTaskExecutor.startTask(new ReadPumpClockTask(serviceTransport));
             } else if ("RetrieveHistoryPage".equals(commandString)) {
                 /*
                 int pageNumber = serviceTransport.getServiceCommand().getMap().getInt("pageNumber");
@@ -453,7 +458,7 @@ public class RoundtripService extends Service {
                 result.setResultOK();
                 result.setPageBundle(page.pack());
                 */
-                ServiceTaskRunnable task = new RetrieveHistoryPageTaskRunnable(serviceTransport);
+                ServiceTask task = new RetrieveHistoryPageTask(serviceTransport);
                 ServiceTaskExecutor.startTask(task);
             } else if ("ReadISFProfile" .equals(commandString)) {
                 ISFTable table = pumpManager.getPumpISFProfile();
@@ -510,6 +515,18 @@ public class RoundtripService extends Service {
         }
     }
 
+    public void announceProgress(int progressPercent) {
+        if (currentTask != null) {
+            ServiceNotification note = new ServiceNotification(RT2Const.IPC.MSG_note_TaskProgress);
+            note.getMap().putInt("progress",progressPercent);
+            note.getMap().putString("task",currentTask.getServiceTransport().getOriginalCommandName());
+            Integer senderHashcode = currentTask.getServiceTransport().getSenderHashcode();
+            serviceConnection.sendNotification(note, senderHashcode);
+        } else {
+            Log.e(TAG,"announceProgress: No current task");
+        }
+    }
+
     public void sendServiceTransportResponse(ServiceTransport transport, ServiceResult serviceResult) {
         // get the key (hashcode) of the client who requested this
         Integer clientHashcode = transport.getSenderHashcode();
@@ -519,5 +536,8 @@ public class RoundtripService extends Service {
         serviceConnection.sendTransport(transport,clientHashcode);
     }
 
+    public boolean sendNotification(ServiceNotification notification, Integer clientHashcode) {
+        return serviceConnection.sendNotification(notification, clientHashcode);
+    }
 }
 

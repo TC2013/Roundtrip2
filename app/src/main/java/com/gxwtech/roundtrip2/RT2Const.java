@@ -67,6 +67,7 @@ public class RT2Const {
         public static final String MSG_note_Idle = Prefix + "MSG_note_Idle";
         public static final String MSG_note_FindingRileyLink = Prefix + "MSG_note_FindingRileyLink";
         public static final String MSG_note_WakingPump = Prefix + "MSG_note_WakingPump";
+        public static final String MSG_note_TaskProgress = Prefix + "MSG_note_TaskProgress";
 
     }
     public class local {

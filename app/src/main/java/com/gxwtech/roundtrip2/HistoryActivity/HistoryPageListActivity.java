@@ -22,6 +22,9 @@ import android.widget.TextView;
 
 import com.gxwtech.roundtrip2.R;
 import com.gxwtech.roundtrip2.RT2Const;
+import com.gxwtech.roundtrip2.ServiceData.RetrieveHistoryPageResult;
+import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
+import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -92,8 +95,11 @@ public class HistoryPageListActivity extends AppCompatActivity {
                         Log.e(TAG, "onReceive: null action");
                     } else {
                         if (RT2Const.local.INTENT_historyPageBundleIncoming.equals(action)) {
-                            ArrayList<Bundle> packedPages = receivedIntent.getExtras().getBundle(RT2Const.IPC.MSG_PUMP_history_key).getParcelableArrayList(RT2Const.IPC.MSG_PUMP_history_key);
-                            for (Bundle page : packedPages) {
+                            Bundle incomingBundle = receivedIntent.getExtras().getBundle(RT2Const.IPC.MSG_PUMP_history_key);
+                            ServiceTransport transport = new ServiceTransport(incomingBundle);
+                            ServiceResult result = transport.getServiceResult();
+                            if ("RetrieveHistoryPageResult".equals(result.getServiceResultType())) {
+                                Bundle page = ((RetrieveHistoryPageResult) result).getPageBundle();
                                 ArrayList<Bundle> recordBundleList = page.getParcelableArrayList("mRecordList");
                                 try {
                                     for (Bundle record : recordBundleList) {

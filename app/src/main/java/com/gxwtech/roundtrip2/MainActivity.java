@@ -59,11 +59,6 @@ public class MainActivity extends AppCompatActivity {
                             roundtripServiceClientConnection.sendServiceCommand(cmd);
                             roundtripServiceClientConnection.sendServiceCommand(
                                     ServiceClientActions.makeUseThisRileylinkCommand("00:07:80:2D:9E:F4"));
-                        } else if (RT2Const.IPC.MSG_PUMP_history.equals(action)) {
-                            Intent launchHistoryViewIntent = new Intent(context,HistoryPageListActivity.class);
-                            storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
-                            startActivity(new Intent(context,HistoryPageListActivity.class));
-                            // wait for history viwere to announce "ready"
                         } else if (RT2Const.local.INTENT_historyPageViewerReady.equals(action)) {
                             Intent sendHistoryIntent = new Intent(RT2Const.local.INTENT_historyPageBundleIncoming);
                             sendHistoryIntent.putExtra(RT2Const.IPC.MSG_PUMP_history_key, storeForHistoryViewer);
@@ -80,7 +75,12 @@ public class MainActivity extends AppCompatActivity {
                                     clockResult.initFromServiceResult(transport.getServiceResult());
                                     TextView pumpTimeTextView = (TextView) findViewById(R.id.textViewPumpClockTime);
                                     pumpTimeTextView.setText(clockResult.getTimeString());
+                                    showIdle();
                                 } else if ("RetrieveHistoryPage".equals(originalCommandName)) {
+                                    Intent launchHistoryViewIntent = new Intent(context,HistoryPageListActivity.class);
+                                    storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
+                                    startActivity(new Intent(context,HistoryPageListActivity.class));
+                                    // wait for history viewer to announce "ready"
                                     showIdle();
                                 } else {
                                     Log.e(TAG,"Dunno what to do with this command completion: " + transport.getOriginalCommandName());
@@ -104,6 +104,10 @@ public class MainActivity extends AppCompatActivity {
                                 showBusy("Finding RileyLink", 99);
                             } else if (RT2Const.IPC.MSG_note_Idle.equals(note)) {
                                 showIdle();
+                            } else if (RT2Const.IPC.MSG_note_TaskProgress.equals(note)) {
+                                int progress = notification.getMap().getInt("progress");
+                                String taskName = notification.getMap().getString("task");
+                                showBusy(taskName,progress);
                             } else {
                                 Log.e(TAG,"Unrecognized Notification: '" + note + "'");
                             }
@@ -231,10 +235,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onFetchHistoryButtonClicked(View view) {
-        //sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchHistory);
+        /* Not working yet.
         showBusy("Fetch history page 0",50);
         ServiceCommand retrievePageCommand = ServiceClientActions.makeRetrieveHistoryPageCommand(0);
         roundtripServiceClientConnection.sendServiceCommand(retrievePageCommand);
+        */
     }
 
     public void onFetchSavedHistoryButtonClicked(View view) {

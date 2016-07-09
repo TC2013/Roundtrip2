@@ -10,13 +10,13 @@ import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 /**
  * Created by geoff on 7/9/16.
  */
-public class ServiceTaskRunnable implements Runnable {
-    private static final String TAG = "ServiceTaskRunnable(base)";
+public class ServiceTask implements Runnable {
+    private static final String TAG = "ServiceTask(base)";
     protected ServiceTransport mTransport;
-    public ServiceTaskRunnable() {
+    public ServiceTask() {
         init(new ServiceTransport());
     }
-    public ServiceTaskRunnable(ServiceTransport transport) {
+    public ServiceTask(ServiceTransport transport) {
         init(transport);
     }
 
@@ -26,6 +26,14 @@ public class ServiceTaskRunnable implements Runnable {
 
     @Override
     public void run() {
+    }
+
+    public ServiceTransport getServiceTransport() {
+        return mTransport;
+    }
+
+    protected void sendResponse(ServiceResult result) {
+        RoundtripService.getInstance().sendServiceTransportResponse(mTransport,result);
     }
 }
 
