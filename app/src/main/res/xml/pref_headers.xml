@@ -1,0 +1,16 @@
+<preference-headers xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- These settings headers are only used on tablets. -->
+
+    <header
+        android:fragment="com.gxwtech.roundtrip2.SettingsActivity$PumpPreferenceFragment"
+        android:icon="@drawable/tablet"
+        android:title="@string/pref_pump_prefs" />
+
+    <header
+        android:fragment="com.gxwtech.roundtrip2.SettingsActivity$RileyLinkPreferenceFragment"
+        android:icon="@drawable/cast"
+        android:title="@string/pref_rileylink_prefs" />
+
+
+</preference-headers>
