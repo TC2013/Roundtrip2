@@ -53,12 +53,10 @@ public class MainActivity extends AppCompatActivity {
 
                         if (RT2Const.local.INTENT_serviceConnected.equals(action)) {
                             showIdle();
+
                             ServiceCommand cmd = ServiceClientActions.makeSetPumpIDCommand("518163");
                             showBusy("Configuring Service",50);
                             roundtripServiceClientConnection.sendServiceCommand(cmd);
-                            //sendPUMP_useThisDevice("518163");
-                            //ServiceCommand rlcmd = ServiceClientActions.makeUseThisRileylinkCommand("00:07:80:2D:9E:F4");
-                            //roundtripServiceClientConnection.sendServiceCommand(rlcmd);
                             roundtripServiceClientConnection.sendServiceCommand(
                                     ServiceClientActions.makeUseThisRileylinkCommand("00:07:80:2D:9E:F4"));
                         } else if (RT2Const.IPC.MSG_PUMP_history.equals(action)) {
@@ -76,11 +74,14 @@ public class MainActivity extends AppCompatActivity {
                             Bundle bundle = receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey);
                             ServiceTransport transport = new ServiceTransport(bundle);
                             if (transport.commandDidCompleteOK()) {
-                                if ("ReadPumpClock".equals(transport.getOriginalCommandName())) {
+                                String originalCommandName = transport.getOriginalCommandName();
+                                if ("ReadPumpClock".equals(originalCommandName)) {
                                     ReadPumpClockResult clockResult = new ReadPumpClockResult();
                                     clockResult.initFromServiceResult(transport.getServiceResult());
                                     TextView pumpTimeTextView = (TextView) findViewById(R.id.textViewPumpClockTime);
                                     pumpTimeTextView.setText(clockResult.getTimeString());
+                                } else if ("RetrieveHistoryPage".equals(originalCommandName)) {
+                                    showIdle();
                                 } else {
                                     Log.e(TAG,"Dunno what to do with this command completion: " + transport.getOriginalCommandName());
                                 }
@@ -184,6 +185,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar linearProgressBar;
     private ProgressBar spinnyProgressBar;
     private static final int spinnyFPS = 10;
+    private Thread spinnyThread;
     void showBusy(String activityString, int progress) {
         mProgress = progress;
         TextView tv = (TextView)findViewById(R.id.textViewActivity);
@@ -191,16 +193,20 @@ public class MainActivity extends AppCompatActivity {
         linearProgressBar.setProgress(progress);
         if (progress > 0) {
             spinnyProgressBar.setVisibility(View.VISIBLE);
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    while ((mProgress > 0) && (mProgress < 100)) {
-                        mSpinnyProgress += 100 / spinnyFPS;
-                        spinnyProgressBar.setProgress(mSpinnyProgress);
-                        SystemClock.sleep(1000/spinnyFPS);
+            if (spinnyThread == null) {
+                spinnyThread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        while ((mProgress > 0) && (mProgress < 100)) {
+                            mSpinnyProgress += 100 / spinnyFPS;
+                            spinnyProgressBar.setProgress(mSpinnyProgress);
+                            SystemClock.sleep(1000 / spinnyFPS);
+                        }
+                        spinnyThread = null;
                     }
-                }
-            }).start();
+                });
+                spinnyThread.start();
+            }
         } else {
             spinnyProgressBar.setVisibility(View.INVISIBLE);
         }
@@ -226,6 +232,9 @@ public class MainActivity extends AppCompatActivity {
 
     public void onFetchHistoryButtonClicked(View view) {
         //sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchHistory);
+        showBusy("Fetch history page 0",50);
+        ServiceCommand retrievePageCommand = ServiceClientActions.makeRetrieveHistoryPageCommand(0);
+        roundtripServiceClientConnection.sendServiceCommand(retrievePageCommand);
     }
 
     public void onFetchSavedHistoryButtonClicked(View view) {

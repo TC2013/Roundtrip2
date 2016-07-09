@@ -21,14 +21,16 @@ import com.gxwtech.roundtrip2.RT2Const;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLink.PumpManager;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RileyLinkBLE;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.RetrieveHistoryPageTaskAsync;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.RetrieveHistoryPageTaskRunnable;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.ServiceTaskExecutor;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.ServiceTaskRunnable;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.ISFTable;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.PumpHistoryManager;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.TimeFormat;
 import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
-import com.gxwtech.roundtrip2.ServiceData.RetrieveHistoryPageResult;
-import com.gxwtech.roundtrip2.ServiceData.ServiceCommand;
 import com.gxwtech.roundtrip2.ServiceData.ServiceNotification;
 import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
@@ -45,6 +47,7 @@ import java.util.ArrayList;
  */
 public class RoundtripService extends Service {
     private static final String TAG="RoundtripService";
+    private static RoundtripService instance;
     private static final String WAKELOCKNAME = "com.gxwtech.roundtrip2.RoundtripServiceWakeLock";
     private static volatile PowerManager.WakeLock lockStatic = null;
 
@@ -72,12 +75,17 @@ public class RoundtripService extends Service {
     // Our hardware/software connection
     private RileyLinkBLE rileyLinkBLE; // android-bluetooth management
     private RFSpy rfspy; // interface for 916MHz radio.
-    private PumpManager pumpManager; // interface to Minimed
+    public PumpManager pumpManager; // interface to Minimed
 
 
     public RoundtripService() {
         super();
+        instance = this;
         Log.d(TAG, "RoundtripService newly constructed");
+    }
+
+    public static RoundtripService getInstance() {
+        return instance;
     }
 
     public void onCreate() {
@@ -438,12 +446,15 @@ public class RoundtripService extends Service {
                 }
                 sendServiceTransportResponse(serviceTransport,pumpResponse);
             } else if ("RetrieveHistoryPage".equals(commandString)) {
+                /*
                 int pageNumber = serviceTransport.getServiceCommand().getMap().getInt("pageNumber");
                 Page page = pumpManager.getPumpHistoryPage(pageNumber);
                 RetrieveHistoryPageResult result = new RetrieveHistoryPageResult();
                 result.setResultOK();
                 result.setPageBundle(page.pack());
-                sendServiceTransportResponse(serviceTransport,result);
+                */
+                ServiceTaskRunnable task = new RetrieveHistoryPageTaskRunnable(serviceTransport);
+                ServiceTaskExecutor.startTask(task);
             } else if ("ReadISFProfile" .equals(commandString)) {
                 ISFTable table = pumpManager.getPumpISFProfile();
                 ServiceResult result = new ServiceResult();
@@ -499,7 +510,7 @@ public class RoundtripService extends Service {
         }
     }
 
-    private void sendServiceTransportResponse(ServiceTransport transport, ServiceResult serviceResult) {
+    public void sendServiceTransportResponse(ServiceTransport transport, ServiceResult serviceResult) {
         // get the key (hashcode) of the client who requested this
         Integer clientHashcode = transport.getSenderHashcode();
         // make a new bundle to send as the message data
