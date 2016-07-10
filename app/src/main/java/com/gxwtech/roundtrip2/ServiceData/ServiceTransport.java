@@ -1,6 +1,7 @@
 package com.gxwtech.roundtrip2.ServiceData;
 
 import android.os.Bundle;
+import android.os.Parcel;
 
 import com.gxwtech.roundtrip2.RT2Const;
 
@@ -49,6 +50,10 @@ public class ServiceTransport extends ServiceMessage {
         return new ServiceCommand(map.getBundle("ServiceCommand"));
     }
 
+    public boolean hasServiceCommand() {
+        return (getMap().containsKey("ServiceCommand"));
+    }
+
     // On remote end, this will be converted to the "action" of a local Intent,
     // so can be used for separating types of messages to different internal handlers.
     public void setTransportType(String transportType) {
@@ -67,12 +72,20 @@ public class ServiceTransport extends ServiceMessage {
         return new ServiceResult(map.getBundle("ServiceResult"));
     }
 
+    public boolean hasServiceResult() {
+        return (getMap().containsKey("ServiceResult"));
+    }
+
     public void setServiceNotification(ServiceNotification notification) {
         map.putBundle("ServiceNotification",notification.getMap());
     }
 
     public ServiceNotification getServiceNotification() {
         return new ServiceNotification(map.getBundle("ServiceNotification"));
+    }
+
+    public boolean hasServiceNotification() {
+        return (getMap().containsKey("ServiceNotification"));
     }
 
     public boolean commandDidCompleteOK() {
@@ -95,6 +108,19 @@ public class ServiceTransport extends ServiceMessage {
             rval += ", rslt=" + getServiceResult().getResult();
             rval += ", err=" + getServiceResult().getErrorDescription();
         }
+        return rval;
+    }
+
+    public ServiceTransport clone() {
+        Parcel p = Parcel.obtain();
+        Parcel p2 = Parcel.obtain();
+        getMap().writeToParcel(p,0);
+        byte[] bytes = p.marshall();
+        p2.unmarshall(bytes, 0, bytes.length);
+        p2.setDataPosition(0);
+        Bundle b = p2.readBundle();
+        ServiceTransport rval = new ServiceTransport();
+        rval.setMap(b);
         return rval;
     }
 }

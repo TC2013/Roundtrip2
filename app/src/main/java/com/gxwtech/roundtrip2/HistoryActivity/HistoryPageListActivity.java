@@ -99,7 +99,8 @@ public class HistoryPageListActivity extends AppCompatActivity {
                             ServiceTransport transport = new ServiceTransport(incomingBundle);
                             ServiceResult result = transport.getServiceResult();
                             if ("RetrieveHistoryPageResult".equals(result.getServiceResultType())) {
-                                Bundle page = ((RetrieveHistoryPageResult) result).getPageBundle();
+                                RetrieveHistoryPageResult pageResult = (RetrieveHistoryPageResult) result;
+                                Bundle page = pageResult.getPageBundle();
                                 ArrayList<Bundle> recordBundleList = page.getParcelableArrayList("mRecordList");
                                 try {
                                     for (Bundle record : recordBundleList) {

@@ -1,5 +1,7 @@
 package com.gxwtech.roundtrip2.RoundtripService.Tasks;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.gxwtech.roundtrip2.RT2Const;
@@ -21,7 +23,8 @@ public class InitializePumpManagerTask extends ServiceTask {
 
     @Override
     public void run() {
-        double lastGoodFrequency = RoundtripService.getInstance().sharedPref.getFloat(RT2Const.serviceLocal.prefsLastGoodPumpFrequency,(float)0.0);
+        SharedPreferences sharedPref = RoundtripService.getInstance().getApplicationContext().getSharedPreferences(RT2Const.serviceLocal.sharedPreferencesKey, Context.MODE_PRIVATE);
+        double lastGoodFrequency = sharedPref.getFloat(RT2Const.serviceLocal.prefsLastGoodPumpFrequency,(float)0.0);
         if (lastGoodFrequency != 0) {
             Log.i(TAG,String.format("Setting radio frequency to %.2fMHz",lastGoodFrequency));
             RoundtripService.getInstance().pumpManager.setRadioFrequencyForPump(lastGoodFrequency);

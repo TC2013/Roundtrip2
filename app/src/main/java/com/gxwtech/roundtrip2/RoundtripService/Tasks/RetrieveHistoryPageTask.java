@@ -21,7 +21,7 @@ public class RetrieveHistoryPageTask extends ServiceTask {
         RetrieveHistoryPageResult result = new RetrieveHistoryPageResult();
         result.setResultOK();
         result.setPageBundle(page.pack());
-        sendResponse(result);
+        getServiceTransport().setServiceResult(result);
     }
 
 }

@@ -8,9 +8,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.Parcel;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
@@ -116,6 +118,9 @@ public class RoundtripService extends Service {
 
         pumpHistoryManager = new PumpHistoryManager(getApplicationContext());
         rileyLinkBLE = new RileyLinkBLE(this);
+        rfspy = new RFSpy(mContext,rileyLinkBLE);
+        rfspy.startReader();
+        pumpManager = new PumpManager(mContext,rfspy,pumpIDBytes);
 
         mBroadcastReceiver = new BroadcastReceiver() {
             @Override
@@ -131,17 +136,16 @@ public class RoundtripService extends Service {
                         Log.e(TAG,"onReceive: null action");
                     } else {
                         if (action.equals(RT2Const.serviceLocal.bluetooth_connected)) {
+                            Log.w(TAG,"serviceLocal.bluetooth_connected");
                             serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_note_FindingRileyLink),null);
-                            //                            rileyLinkBLE.discoverServices();
                             ServiceTaskExecutor.startTask(new DiscoverGattServicesTask());
                             // If this is successful,
                             // We will get a broadcast of RT2Const.serviceLocal.BLE_services_discovered
                         } else if (action.equals(RT2Const.serviceLocal.BLE_services_discovered)) {
+                            Log.w(TAG,"serviceLocal.BLE_services_discovered");
                             serviceConnection.sendNotification(new ServiceNotification(RT2Const.IPC.MSG_note_WakingPump),null);
                             rileyLinkBLE.enableNotifications();
-                            rfspy = new RFSpy(context, rileyLinkBLE);
                             rfspy.startReader(); // call startReader from outside?
-                            RoundtripService.getInstance().pumpManager = new PumpManager(context, rfspy, pumpIDBytes);
                             ServiceTask task = new InitializePumpManagerTask();
                             ServiceTaskExecutor.startTask(task);
                             Log.i(TAG, "Announcing RileyLink open For business");
@@ -297,6 +301,24 @@ public class RoundtripService extends Service {
         Log.d(TAG, "onCreate(): It's ALIVE!");
     }
 
+    @Override
+    public boolean onUnbind(Intent intent) {
+        Log.w(TAG,"onUnbind");
+        return super.onUnbind(intent);
+    }
+
+    @Override
+    public void onRebind(Intent intent) {
+        Log.w(TAG,"onRebind");
+        super.onRebind(intent);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        Log.w(TAG,"onConfigurationChanged");
+        super.onConfigurationChanged(newConfig);
+    }
+
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -320,9 +342,10 @@ public class RoundtripService extends Service {
         } else {
             Log.e(TAG, "Received null intent?");
         }
-        BluetoothInit();
+        BluetoothInit(); // this kicks off our process of device discovery.
         return (START_REDELIVER_INTENT | START_STICKY);
     }
+
     synchronized private static PowerManager.WakeLock getLock(Context context) {
         if (lockStatic == null) {
             PowerManager mgr =
@@ -433,6 +456,12 @@ public class RoundtripService extends Service {
         if (task != currentTask) {
             Log.e(TAG,"finishCurrentTask: task does not match");
         }
+        // hack to force deep copy of transport contents
+        ServiceTransport transport = task.getServiceTransport().clone();
+
+        if (transport.hasServiceResult()) {
+            sendServiceTransportResponse(transport,transport.getServiceResult());
+        }
         currentTask = null;
     }
 
@@ -440,24 +469,8 @@ public class RoundtripService extends Service {
         if (serviceTransport.getServiceCommand().isPumpCommand()) {
             String commandString = serviceTransport.getOriginalCommandName();
             if ("ReadPumpClock".equals(commandString)) {
-                /*
-                ReadPumpClockResult pumpResponse = pumpManager.getPumpRTC();
-                if (pumpResponse != null) {
-                    Log.i(TAG, "ReadPumpClock: " + pumpResponse.getTimeString());
-                } else {
-                    Log.e(TAG, "handleServiceCommand(" + commandString + ") pumpResponse is null");
-                }
-                sendServiceTransportResponse(serviceTransport,pumpResponse);
-                */
                 ServiceTaskExecutor.startTask(new ReadPumpClockTask(serviceTransport));
             } else if ("RetrieveHistoryPage".equals(commandString)) {
-                /*
-                int pageNumber = serviceTransport.getServiceCommand().getMap().getInt("pageNumber");
-                Page page = pumpManager.getPumpHistoryPage(pageNumber);
-                RetrieveHistoryPageResult result = new RetrieveHistoryPageResult();
-                result.setResultOK();
-                result.setPageBundle(page.pack());
-                */
                 ServiceTask task = new RetrieveHistoryPageTask(serviceTransport);
                 ServiceTaskExecutor.startTask(task);
             } else if ("ReadISFProfile" .equals(commandString)) {
@@ -487,31 +500,57 @@ public class RoundtripService extends Service {
             }
             sendServiceTransportResponse(serviceTransport, result);
         } else if ("UseThisRileylink".equals(serviceTransport.getOriginalCommandName())) {
-
-            String deviceAddress = serviceTransport.getServiceCommand().getMap().getString("rlAddress");
-
-            if (deviceAddress == null) {
+            // If we are not connected, connect using the given address.
+            // If we are connected and the addresses differ, disconnect, connect to new.
+            // If we are connected and the addresses are the same, ignore.
+            String deviceAddress = serviceTransport.getServiceCommand().getMap().getString("rlAddress","");
+            if ("".equals(deviceAddress)) {
                 Log.e(TAG,"handleIPCMessage: null RL address passed");
             } else {
-                Toast.makeText(mContext, "Using RL " + deviceAddress, Toast.LENGTH_SHORT).show();
-                Log.d(TAG,"handleIPCMessage: Using RL " + deviceAddress);
-                if (mBluetoothAdapter == null) {
-                    mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-                }
-                if (mBluetoothAdapter != null) {
-                    if (mBluetoothAdapter.isEnabled()) {
-                        // FIXME: this may be a long running function:
-                        rileyLinkBLE.findRileyLink(deviceAddress);
-                        // If successful, we will get a broadcast from RileyLinkBLE: RT2Const.serviceLocal.bluetooth_connected
-                    } else {
-                        Log.e(TAG, "Bluetooth is not enabled.");
-                    }
-                } else {
-                    Log.e(TAG, "Failed to get adapter");
-                }
+                reconfigureRileylink(deviceAddress);
             }
         } else {
             Log.e(TAG,"handleIncomingServiceTransport: Failed to handle service command '"+serviceTransport.getOriginalCommandName()+"'");
+        }
+    }
+
+    // returns true if our Rileylink configuration changed
+    public boolean reconfigureRileylink(String deviceAddress) {
+        if (rileyLinkBLE.isConnected()) {
+            if (deviceAddress.equals(mRileylinkAddress)) {
+                Log.i(TAG, "No change to RL address.  Not reconnecting.");
+                return false;
+            } else {
+                Log.w(TAG, "Disconnecting from old RL (" + mRileylinkAddress + "), reconnecting to new: " + deviceAddress);
+                rileyLinkBLE.disconnect();
+                // prolly need to shut down listening thread too?
+                SharedPreferences.Editor ed = sharedPref.edit();
+                ed.putString("rlAddress", deviceAddress);
+                ed.apply();
+                mRileylinkAddress = deviceAddress;
+                rileyLinkBLE.findRileyLink(mRileylinkAddress);
+                return true;
+            }
+        } else {
+            Toast.makeText(mContext, "Using RL " + deviceAddress, Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "handleIPCMessage: Using RL " + deviceAddress);
+            if (mBluetoothAdapter == null) {
+                mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            }
+            if (mBluetoothAdapter != null) {
+                if (mBluetoothAdapter.isEnabled()) {
+                    // FIXME: this may be a long running function:
+                    rileyLinkBLE.findRileyLink(deviceAddress);
+                    // If successful, we will get a broadcast from RileyLinkBLE: RT2Const.serviceLocal.bluetooth_connected
+                    return true;
+                } else {
+                    Log.e(TAG, "Bluetooth is not enabled.");
+                    return false;
+                }
+            } else {
+                Log.e(TAG, "Failed to get adapter");
+                return false;
+            }
         }
     }
 

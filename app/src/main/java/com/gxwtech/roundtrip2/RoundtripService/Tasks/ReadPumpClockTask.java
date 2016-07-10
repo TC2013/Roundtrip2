@@ -24,6 +24,6 @@ public class ReadPumpClockTask extends ServiceTask {
         } else {
             Log.e(TAG, "handleServiceCommand(" + mTransport.getOriginalCommandName() + ") pumpResponse is null");
         }
-        sendResponse(pumpResponse);
+        getServiceTransport().setServiceResult(pumpResponse);
     }
 }

@@ -45,7 +45,7 @@ public class RoundtripServiceIPCConnection {
                     try {
                         msg.replyTo.send(myReply);
                         mClients.put(mClients.hashCode(),msg.replyTo);
-                        Log.d(TAG,"handleMessage: Registered client");
+                        Log.v(TAG,"handleMessage: Registered client");
                     } catch (RemoteException e) {
                         // I guess they aren't registered after all...
                         Log.e(TAG,"handleMessage: failed to send acknowledgement of registration");
@@ -53,18 +53,25 @@ public class RoundtripServiceIPCConnection {
 
                     break;
                 case RT2Const.IPC.MSG_unregisterClient:
+                    Log.v(TAG,"Unregistered client");
                     mClients.remove(msg.replyTo.hashCode());
+                    break;
                 case RT2Const.IPC.MSG_IPC:
                     // As the current thread is likely a GUI thread from some app,
                     // rebroadcast the message as a local item.
                     // Convert from Message to Intent
                     if (msg.replyTo != null) {
-                        ServiceTransport transport = new ServiceTransport(bundle);
-                        Log.d(TAG, "Service received IPC message" + transport.describeContentsShort());
-                        transport.setSenderHashcode(msg.replyTo.hashCode());
-                        Intent intent = new Intent(transport.getTransportType());
-                        intent.putExtra(RT2Const.IPC.bundleKey, transport.getMap());
-                        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+                        try {
+                            ServiceTransport transport = new ServiceTransport(bundle);
+                            Log.d(TAG, "Service received IPC message" + transport.describeContentsShort());
+                            transport.setSenderHashcode(msg.replyTo.hashCode());
+                            Intent intent = new Intent(transport.getTransportType());
+                            intent.putExtra(RT2Const.IPC.bundleKey, transport.getMap());
+                            LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+                        } catch (IllegalArgumentException e) {
+                            // This can happen on screen tilts... what else is wrong?
+                            Log.e(TAG,"Malformed service bundle: " + bundle.toString());
+                        }
                     }
                     break;
                 /*
@@ -114,12 +121,19 @@ public class RoundtripServiceIPCConnection {
                 } else {
                     // send to all clients
                     for (Integer clientHash : mClients.keySet()) {
-                        mClients.get(clientHash).send(msg);
+                        Message m2 = Message.obtain(msg);
+                        mClients.get(clientHash).send(m2);
                     }
                 }
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
+            /*
+            catch (IllegalStateException e) {
+                // This happens every time we are in a bluetooth operation and the screen is turned.
+                Log.e(TAG,"sendMessage: IllegalStateException");
+            }
+            */
         }
         return true;
     }

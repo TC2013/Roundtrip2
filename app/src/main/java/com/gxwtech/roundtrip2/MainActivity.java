@@ -34,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.w(TAG,"onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -54,9 +55,22 @@ public class MainActivity extends AppCompatActivity {
                         if (RT2Const.local.INTENT_serviceConnected.equals(action)) {
                             showIdle();
 
+                            /*
                             ServiceCommand cmd = ServiceClientActions.makeSetPumpIDCommand("518163");
-                            showBusy("Configuring Service",50);
+                            showBusy("Set Pump Address",1);
                             roundtripServiceClientConnection.sendServiceCommand(cmd);
+                                    */
+
+                            /**
+                             * Client MUST send a "UseThisRileylink" message because it asserts that
+                             * the user has given explicit permission to use bluetooth.
+                             *
+                             * We can change the format so that it is a simple "bluetooth OK" message,
+                             * rather than an explicit address of a Rileylink, and the Service can
+                             * use the last known good value.  But the kick-off of bluetooth ops must
+                             * come from an Activity.
+                             */
+                            showBusy("Configuring Service",50);
                             roundtripServiceClientConnection.sendServiceCommand(
                                     ServiceClientActions.makeUseThisRileylinkCommand("00:07:80:2D:9E:F4"));
                         } else if (RT2Const.local.INTENT_historyPageViewerReady.equals(action)) {
@@ -143,23 +157,12 @@ public class MainActivity extends AppCompatActivity {
         spinnyProgressBar = (ProgressBar)findViewById(R.id.progressBarSpinny);
     }
 
-    /*
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_ENABLE_BT) {
-            if (resultCode == RESULT_OK) {
-                // User allowed Bluetooth to turn on
-                // Let the service know
-                sendBLEaccessGranted();
-            } else if (resultCode == RESULT_CANCELED) {
-                // Error, or user said "NO"
-                sendBLEaccessDenied();
-                finish();
-            }
-        }
+    protected void onDestroy() {
+        Log.w(TAG,"bye-bye");
+        doUnbindService();
+        super.onDestroy();
     }
-    */
 
     /* Functions for sending messages to RoundtripService */
 
@@ -176,6 +179,8 @@ public class MainActivity extends AppCompatActivity {
         unbindService(conn);
         Log.d(TAG,"doUnbindService: unbinding.");
     }
+
+
 
     /**
      *
@@ -235,7 +240,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onFetchHistoryButtonClicked(View view) {
-        /* Not working yet.
+        /* does not work. Crashes sig 11
         showBusy("Fetch history page 0",50);
         ServiceCommand retrievePageCommand = ServiceClientActions.makeRetrieveHistoryPageCommand(0);
         roundtripServiceClientConnection.sendServiceCommand(retrievePageCommand);

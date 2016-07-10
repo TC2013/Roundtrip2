@@ -32,8 +32,10 @@ public class ServiceTask implements Runnable {
         return mTransport;
     }
 
+    /*
     protected void sendResponse(ServiceResult result) {
         RoundtripService.getInstance().sendServiceTransportResponse(mTransport,result);
     }
+    */
 }
 
