@@ -2,7 +2,7 @@ package com.gxwtech.roundtrip2;
 
 import android.app.Application;
 
-//import com.gxwtech.roundtrip2.ServiceData.ServiceClientConnection;
+import com.gxwtech.roundtrip2.ServiceData.ServiceClientConnection;
 
 /**
  * Created by Tim on 15/06/2016.
@@ -10,14 +10,14 @@ import android.app.Application;
 public class MainApp extends Application {
 
     private static MainApp sInstance;
-    //private static ServiceClientConnection serviceClientConnection;
+    private static ServiceClientConnection serviceClientConnection;
 
     @Override
     public void onCreate() {
         super.onCreate();
 
         sInstance = this;
-        //serviceClientConnection = new ServiceClientConnection();
+        serviceClientConnection = new ServiceClientConnection();
 
         // TODO: 09/07/2016 @TIM are we going to use ActiveAndroid?
         //Manually initialize ActiveAndroid
@@ -34,12 +34,12 @@ public class MainApp extends Application {
         return sInstance;
     }
 
-    //public static ServiceClientConnection getServiceClientConnection(){
-    //    if (serviceClientConnection == null) {
-    //        serviceClientConnection = new ServiceClientConnection();
-    //    }
-    //    return serviceClientConnection;
-    //}
+    public static ServiceClientConnection getServiceClientConnection(){
+        if (serviceClientConnection == null) {
+            serviceClientConnection = new ServiceClientConnection();
+        }
+        return serviceClientConnection;
+    }
 
     // TODO: 09/07/2016 @TIM uncomment ServiceClientConnection once class is added
 
