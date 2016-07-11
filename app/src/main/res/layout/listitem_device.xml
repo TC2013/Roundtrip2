@@ -2,17 +2,20 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:id="@+id/device_list_id">
+    android:layout_height="100dp"
+    android:id="@+id/device_list_id"
+    android:background="@color/accent">
     <TextView android:id="@+id/device_name"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="50dp"
         android:textSize="24dp"
-        android:textColor="@color/primary_dark"/>
+        android:text="name"
+        android:textColor="@color/white"/>
     <TextView android:id="@+id/device_address"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="50dp"
         android:textSize="12dp"
-        android:textColor="@color/primary_dark"/>
+        android:text="address"
+        android:textColor="@color/white"/>
 
 </LinearLayout>

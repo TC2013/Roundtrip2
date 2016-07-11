@@ -81,13 +81,13 @@ public class RileyLinkScan extends AppCompatActivity{
                 prefs.edit().putString(RT2Const.serviceLocal.rileylinkAddressKey, bleAddress).apply();
 
                 //Notify that we have a new rileylinkAddressKey
-                LocalBroadcastManager.getInstance(MainApp.instance()).sendBroadcast(new Intent(RT2Const.local.INTENT_NEW_rileylinkAddressKey));
+                //LocalBroadcastManager.getInstance(MainApp.instance()).sendBroadcast(new Intent(RT2Const.local.INTENT_NEW_rileylinkAddressKey));
 
                 Log.d(TAG, "New rileylinkAddressKey: " + bleAddress);
 
                 //Notify that we have a new pumpIDKey
-                LocalBroadcastManager.getInstance(MainApp.instance()).sendBroadcast(new Intent(RT2Const.local.INTENT_NEW_pumpIDKey));
-                finish();
+                //LocalBroadcastManager.getInstance(MainApp.instance()).sendBroadcast(new Intent(RT2Const.local.INTENT_NEW_pumpIDKey));
+                //finish();
             }
         });
 
@@ -194,11 +194,11 @@ public class RileyLinkScan extends AppCompatActivity{
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    if (device.getName() != null && device.getName().length() > 0) {
+                    //if (device.getName() != null && device.getName().length() > 0) {
                         mLeDeviceListAdapter.addDevice(device);
                         mLeDeviceListAdapter.notifyDataSetChanged();
                         Log.d(TAG, "Found BLE" + device.getName());
-                    }
+                    //}
                 }
             });
         }
@@ -285,7 +285,7 @@ public class RileyLinkScan extends AppCompatActivity{
             }
 
             BluetoothDevice device = mLeDevices.get(i);
-            String deviceName = device.getName();
+            String deviceName = "XXXX";// device.getName();
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
             if(prefs.getString(RT2Const.serviceLocal.rileylinkAddressKey, "").compareTo(device.getAddress()) == 0) {
                 viewHolder.deviceName.setTextColor(getColor(R.color.secondary_text_light));
@@ -304,5 +304,8 @@ public class RileyLinkScan extends AppCompatActivity{
         TextView deviceAddress;
     }
 
+public void addItem(View v){
+
+}
 
 }

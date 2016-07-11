@@ -71,14 +71,13 @@ public class ServiceClientConnection {
 
     //public void sendBLEaccessDenied() { sendIPCMessage(RT2Const.IPC.MSG_BLE_accessDenied); }
 
-    public void sendBLEuseThisDevice(String address) {
+    public void setThisRileylink(String address) {
         //Bundle bundle = new Bundle();
         //bundle.putString(RT2Const.IPC.messageKey, RT2Const.IPC.MSG_BLE_useThisDevice);
         //bundle.putString(RT2Const.IPC.MSG_BLE_useThisDevice_addressKey,address);
         //sendMessage(bundle);
-
-        roundtripServiceClientConnection.sendServiceCommand(
-                ServiceClientActions.makeUseThisRileylinkCommand(address));
+        ServiceCommand command = ServiceClientActions.makeUseThisRileylinkCommand(address);
+        roundtripServiceClientConnection.sendServiceCommand(command);
         Log.d(TAG,"sendIPCMessage: (use this address) "+address);
     }
 
@@ -87,9 +86,8 @@ public class ServiceClientConnection {
         //bundle.putString(RT2Const.IPC.messageKey, RT2Const.IPC.MSG_PUMP_useThisAddress);
         //bundle.putString(RT2Const.IPC.MSG_PUMP_useThisAddress_pumpIDKey,pumpIDString);
         //sendMessage(bundle);
-
-        ServiceCommand cmd = ServiceClientActions.makeSetPumpIDCommand(pumpIDString);
-        roundtripServiceClientConnection.sendServiceCommand(cmd);
+        ServiceCommand command = ServiceClientActions.makeSetPumpIDCommand(pumpIDString);
+        roundtripServiceClientConnection.sendServiceCommand(command);
         Log.d(TAG,"sendPUMP_useThisDevice: " + pumpIDString);
     }
 
@@ -113,5 +111,10 @@ public class ServiceClientConnection {
     public void readPumpClock() {
         ServiceCommand command = ServiceClientActions.makeReadPumpClockCommand();
         roundtripServiceClientConnection.sendServiceCommand(command);
+    }
+
+    public void readISFProfile(){
+        ServiceCommand getISFProfileCommand = ServiceClientActions.makeReadISFProfileCommand();
+        roundtripServiceClientConnection.sendServiceCommand(getISFProfileCommand);
     }
 }
