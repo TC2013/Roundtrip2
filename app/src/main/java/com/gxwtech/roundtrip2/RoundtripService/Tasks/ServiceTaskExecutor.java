@@ -21,16 +21,22 @@ public class ServiceTaskExecutor extends ThreadPoolExecutor {
     private ServiceTaskExecutor() {
         super(1,1,10000, TimeUnit.MILLISECONDS,taskQueue);
     }
-    protected void beforeExecute(Thread t, Runnable r) {
-        ServiceTask task = (ServiceTask) r;
-        RoundtripService.getInstance().setCurrentTask(task);
-    }
     public static ServiceTask startTask(ServiceTask task) {
-        instance.execute(task);
+        instance.execute(task); // task will be run on async thread from pool.
         return task;
     }
-    protected void afterExecute(Runnable r, Throwable t) {
+    protected void beforeExecute(Thread t, Runnable r) {
+        // This is run on either caller UI thread or Service UI thread.
         ServiceTask task = (ServiceTask) r;
+        Log.v(TAG,"About to run task " + task.getClass().getSimpleName());
+        RoundtripService.getInstance().setCurrentTask(task);
+        task.preOp();
+    }
+    protected void afterExecute(Runnable r, Throwable t) {
+        // This is run on either caller UI thread or Service UI thread.
+        ServiceTask task = (ServiceTask) r;
+        task.postOp();
+        Log.v(TAG,"Finishing task " + task.getClass().getSimpleName());
         RoundtripService.getInstance().finishCurrentTask(task);
     }
 }

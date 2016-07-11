@@ -1,9 +1,11 @@
 package com.gxwtech.roundtrip2.RoundtripService.RileyLink;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.SystemClock;
 import android.util.Log;
 
+import com.gxwtech.roundtrip2.RT2Const;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpyResponse;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RadioPacket;
@@ -27,6 +29,7 @@ import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 import com.gxwtech.roundtrip2.util.StringUtil;
 
+import org.joda.time.Duration;
 import org.joda.time.IllegalFieldValueException;
 import org.joda.time.Instant;
 import org.joda.time.LocalDateTime;
@@ -41,15 +44,19 @@ public class PumpManager {
     private static final String TAG = "PumpManager";
     public double[] scanFrequencies = {916.45, 916.50, 916.55, 916.60, 916.65, 916.70, 916.75, 916.80};
     public static final int startSession_signal = 6656; // arbitrary.
-    private long pumpAwakeUntil = 0;
+    //private long pumpAwakeUntil = 0;
+    private int pumpAwakeForMinutes = 6;
     private final RFSpy rfspy;
     private byte[] pumpID;
     public boolean DEBUG_PUMPMANAGER = true;
     private final Context context;
+    private SharedPreferences prefs;
+    private Instant lastGoodPumpCommunicationTime = new Instant(0);
     public PumpManager(Context context, RFSpy rfspy, byte[] pumpID) {
         this.context = context;
         this.rfspy = rfspy;
         this.pumpID = pumpID;
+        prefs = context.getSharedPreferences(RT2Const.serviceLocal.sharedPreferencesKey, Context.MODE_PRIVATE);
     }
 
     private PumpMessage runCommandWithArgs(PumpMessage msg) {
@@ -70,6 +77,7 @@ public class PumpManager {
         return sendAndListen(msg,2000);
     }
 
+    // All pump communications go through this function.
     protected PumpMessage sendAndListen(PumpMessage msg, int timeout_ms) {
         boolean showPumpMessages = true;
         if (showPumpMessages) {
@@ -77,6 +85,10 @@ public class PumpManager {
         }
         RFSpyResponse resp = rfspy.transmitThenReceive(new RadioPacket(msg.getTxData()),timeout_ms);
         PumpMessage rval = new PumpMessage(resp.getRadioResponse().getPayload());
+        if (rval.isValid()) {
+            // Mark this as the last time we heard from the pump.
+            rememberLastGoodPumpCommunicationTime();
+        }
         if (showPumpMessages) {
             Log.i(TAG,"Received:"+ByteUtil.shortHexString(resp.getRadioResponse().getPayload()));
         }
@@ -85,7 +97,7 @@ public class PumpManager {
 
     public Page getPumpHistoryPage(int pageNumber) {
         RawHistoryPage rval = new RawHistoryPage();
-        wakeup(6);
+        wakeup(pumpAwakeForMinutes);
         PumpMessage getHistoryMsg = makePumpMessage(new MessageType(MessageType.CMD_M_READ_HISTORY), new GetHistoryPageCarelinkMessageBody(pageNumber));
         Log.i(TAG,"getPumpHistoryPage("+pageNumber+"): "+ByteUtil.shortHexString(getHistoryMsg.getTxData()));
         PumpMessage firstResponse = runCommandWithArgs(getHistoryMsg);
@@ -162,7 +174,7 @@ public class PumpManager {
 
     public ReadPumpClockResult getPumpRTC() {
         ReadPumpClockResult rval = new ReadPumpClockResult();
-        wakeup(6);
+        wakeup(pumpAwakeForMinutes);
         PumpMessage getRTCMsg = makePumpMessage(new MessageType(MessageType.CMD_M_READ_RTC), new CarelinkShortMessageBody(new byte[]{0}));
         Log.i(TAG,"getPumpRTC: " + ByteUtil.shortHexString(getRTCMsg.getTxData()));
         PumpMessage response = sendAndListen(getRTCMsg);
@@ -190,7 +202,7 @@ public class PumpManager {
     }
 
     public PumpModel getPumpModel() {
-        wakeup(6);
+        wakeup(pumpAwakeForMinutes);
         PumpMessage msg = makePumpMessage(new MessageType(MessageType.GetPumpModel), new GetPumpModelCarelinkMessageBody());
         Log.i(TAG,"getPumpModel: " + ByteUtil.shortHexString(msg.getTxData()));
         PumpMessage response = sendAndListen(msg);
@@ -212,11 +224,19 @@ public class PumpManager {
 
 
     public ISFTable getPumpISFProfile() {
+        wakeup(pumpAwakeForMinutes);
         PumpMessage getISFProfileMessage = makePumpMessage(new MessageType(MessageType.GetISFProfile),new CarelinkShortMessageBody());
         PumpMessage resp = sendAndListen(getISFProfileMessage);
         ISFTable table = new ISFTable();
         table.parseFrom(resp.getContents());
         return table;
+    }
+
+    public PumpMessage getBolusWizardCarbProfile() {
+        wakeup(pumpAwakeForMinutes);
+        PumpMessage getCarbProfileMessage = makePumpMessage(new MessageType(MessageType.CMD_M_READ_CARB_RATIOS),new CarelinkShortMessageBody());
+        PumpMessage resp = sendAndListen(getCarbProfileMessage);
+        return resp;
     }
 
     public void tryoutPacket(byte[] pkt) {
@@ -232,7 +252,7 @@ public class PumpManager {
 
     // See ButtonPressCarelinkMessageBody
     public void pressButton(int which) {
-        wakeup(6);
+        wakeup(pumpAwakeForMinutes);
         PumpMessage pressButtonMessage = makePumpMessage(new MessageType(MessageType.CMD_M_KEYPAD_PUSH),new ButtonPressCarelinkMessageBody(which));
         PumpMessage resp = sendAndListen(pressButtonMessage);
         if (resp.messageType.mtype != MessageType.PumpAck) {
@@ -241,12 +261,20 @@ public class PumpManager {
     }
 
     public void wakeup(int duration_minutes) {
-        if (SystemClock.elapsedRealtime() > pumpAwakeUntil) {
+        // If it has been longer than n minutes, do wakeup.  Otherwise assume pump is still awake.
+        // **** FIXME: this wakeup doesn't seem to work well... must revisit
+        pumpAwakeForMinutes = duration_minutes;
+        Instant lastGood = getLastGoodPumpCommunicationTime();
+//        Instant lastGoodPlus = lastGood.plus(new Duration(pumpAwakeForMinutes * 60 * 1000));
+        Instant lastGoodPlus = lastGood.plus(new Duration(1 * 60 * 1000));
+        Instant now = Instant.now();
+        if (now.compareTo(lastGoodPlus) > 0) {
             Log.i(TAG,"Waking pump...");
             PumpMessage msg = makePumpMessage(new MessageType(MessageType.PowerOn), new CarelinkShortMessageBody(new byte[]{(byte) duration_minutes}));
             RFSpyResponse resp = rfspy.transmitThenReceive(new RadioPacket(msg.getTxData()), (byte) 0, (byte) 200, (byte) 0, (byte) 0, 15000, (byte) 0);
             Log.i(TAG, "wakeup: raw response is " + ByteUtil.shortHexString(resp.getRaw()));
-            pumpAwakeUntil = SystemClock.elapsedRealtime() + duration_minutes * 60 * 1000;
+        } else {
+            Log.v(TAG,"Last pump communication was recent, not waking pump.");
         }
     }
 
@@ -310,7 +338,7 @@ public class PumpManager {
 
     private double quickTunePumpStep(double startFrequencyMHz, double stepSizeMHz) {
         Log.i(TAG,"Doing quick radio tune for pump ID " + pumpID);
-        wakeup(1);
+        wakeup(pumpAwakeForMinutes);
         int startRssi = tune_tryFrequency(startFrequencyMHz);
         double lowerFrequency = startFrequencyMHz - stepSizeMHz;
         int lowerRssi = tune_tryFrequency(lowerFrequency);
@@ -332,7 +360,7 @@ public class PumpManager {
 
     private double scanForPump(double[] frequencies) {
         Log.i(TAG,"Scanning for pump ID " + pumpID);
-        wakeup(1);
+        wakeup(pumpAwakeForMinutes);
         FrequencyScanResults results = new FrequencyScanResults();
 
         for (int i=0; i<frequencies.length; i++) {
@@ -394,6 +422,24 @@ public class PumpManager {
         PumpMessage msg = new PumpMessage();
         msg.init(ByteUtil.concat(ByteUtil.concat(new byte[]{(byte)0xa7},pumpID),typeAndBody));
         return msg;
+    }
+
+    private void rememberLastGoodPumpCommunicationTime() {
+        lastGoodPumpCommunicationTime = Instant.now();
+        SharedPreferences.Editor ed = prefs.edit();
+        ed.putLong("lastGoodPumpCommunicationTime",lastGoodPumpCommunicationTime.getMillis());
+        ed.commit();
+    }
+
+    private Instant getLastGoodPumpCommunicationTime() {
+        // If we have a value of zero, we need to load from prefs.
+        if (lastGoodPumpCommunicationTime.getMillis() == new Instant(0).getMillis()) {
+            lastGoodPumpCommunicationTime = new Instant(prefs.getLong("lastGoodPumpCommunicationTime",0));
+            // Might still be zero, but that's fine.
+        }
+        double minutesAgo = (Instant.now().getMillis() - lastGoodPumpCommunicationTime.getMillis()) / (1000.0 * 60.0);
+        Log.v(TAG,"Last good pump communication was " + minutesAgo + " minutes ago.");
+        return lastGoodPumpCommunicationTime;
     }
 
     public void testPageDecode() {

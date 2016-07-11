@@ -25,6 +25,8 @@ import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RileyLinkBLE;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.DiscoverGattServicesTask;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.InitializePumpManagerTask;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.ReadBolusWizardCarbProfileTask;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.ReadISFProfileTask;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.ReadPumpClockTask;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.RetrieveHistoryPageTask;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.ServiceTask;
@@ -474,6 +476,8 @@ public class RoundtripService extends Service {
                 ServiceTask task = new RetrieveHistoryPageTask(serviceTransport);
                 ServiceTaskExecutor.startTask(task);
             } else if ("ReadISFProfile" .equals(commandString)) {
+                ServiceTaskExecutor.startTask(new ReadISFProfileTask(serviceTransport));
+                /*
                 ISFTable table = pumpManager.getPumpISFProfile();
                 ServiceResult result = new ServiceResult();
                 if (table.isValid()) {
@@ -486,6 +490,9 @@ public class RoundtripService extends Service {
                     result.setResultOK();
                 }
                 sendServiceTransportResponse(serviceTransport,result);
+                */
+            } else if ("ReadBolusWizardCarbProfile".equals(commandString)) {
+                ServiceTaskExecutor.startTask(new ReadBolusWizardCarbProfileTask());
             }
         } else if ("SetPumpID".equals(serviceTransport.getOriginalCommandName())) {
             // This one is a command to RoundtripService, not to the PumpManager

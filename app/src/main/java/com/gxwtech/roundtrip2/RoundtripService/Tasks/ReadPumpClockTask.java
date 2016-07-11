@@ -9,7 +9,7 @@ import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 /**
  * Created by geoff on 7/9/16.
  */
-public class ReadPumpClockTask extends ServiceTask {
+public class ReadPumpClockTask extends PumpTask {
     private static final String TAG = "ReadPumpClockTask";
     public ReadPumpClockTask() { }
     public ReadPumpClockTask(ServiceTransport transport) {

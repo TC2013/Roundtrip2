@@ -9,6 +9,7 @@ import com.gxwtech.roundtrip2.RoundtripService.RileyLink.PumpManager;
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
 import com.gxwtech.roundtrip2.ServiceData.ServiceNotification;
+import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 
 /**
  * Created by geoff on 7/9/16.
@@ -18,8 +19,8 @@ import com.gxwtech.roundtrip2.ServiceData.ServiceNotification;
  */
 public class InitializePumpManagerTask extends ServiceTask {
     private static final String TAG = "InitPumpManagerTask";
-    public InitializePumpManagerTask() {
-    }
+    public InitializePumpManagerTask() { super(); }
+    public InitializePumpManagerTask(ServiceTransport transport) { super(transport); }
 
     @Override
     public void run() {

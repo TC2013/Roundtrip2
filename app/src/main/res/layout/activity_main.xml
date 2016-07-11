@@ -165,6 +165,13 @@
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="Get Carb Profile"
+            android:id="@+id/buttonGetCarbProfile"
+            android:onClick="onGetCarbProfileButtonClicked"/>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="View Event Log"
             android:id="@+id/buttonViewEventLog"
             android:onClick="onViewEventLogButtonClicked"/>

@@ -14,7 +14,7 @@ public class TimeFormat {
     private static final boolean DEBUG_TIMEFORMAT = false;
     private static final String TAG = "TimeFormat";
     public TimeFormat() { }
-    public static final String standardFormatString = "YYYY-MM-ddTHH:mm:ss";
+    public static final String standardFormatString = "YYYY-MM-dd HH:mm:ss";
     public static DateTimeFormatter standardFormatter() {
         return DateTimeFormat.forPattern(standardFormatString);
     }

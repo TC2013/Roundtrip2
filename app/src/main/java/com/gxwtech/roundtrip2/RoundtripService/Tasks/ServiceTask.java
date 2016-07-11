@@ -13,6 +13,7 @@ import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 public class ServiceTask implements Runnable {
     private static final String TAG = "ServiceTask(base)";
     protected ServiceTransport mTransport;
+    public boolean completed = false;
     public ServiceTask() {
         init(new ServiceTransport());
     }
@@ -26,6 +27,14 @@ public class ServiceTask implements Runnable {
 
     @Override
     public void run() {
+    }
+
+    public void preOp() {
+        // This function is called by UI thread before running asynch thread.
+    }
+
+    public void postOp() {
+        // This function is called by UI thread after running asynch thread.
     }
 
     public ServiceTransport getServiceTransport() {

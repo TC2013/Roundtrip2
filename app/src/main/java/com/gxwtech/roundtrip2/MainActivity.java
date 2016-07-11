@@ -266,4 +266,9 @@ public class MainActivity extends AppCompatActivity {
         startActivity(new Intent(getApplicationContext(),ServiceMessageViewListActivity.class));
     }
 
+    public void onGetCarbProfileButtonClicked(View view) {
+        showBusy("Getting Carb Profile",1);
+        roundtripServiceClientConnection.sendServiceCommand(ServiceClientActions.makeReadBolusWizardCarbProfileCommand());
+    }
+
 }
