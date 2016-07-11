@@ -1,4 +1,4 @@
-package com.gxwtech.roundtrip2.ServiceData;
+package com.gxwtech.roundtrip2;
 
 import android.content.Context;
 import android.content.Intent;
@@ -10,6 +10,8 @@ import com.gxwtech.roundtrip2.MainApp;
 import com.gxwtech.roundtrip2.RT2Const;
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
 import com.gxwtech.roundtrip2.RoundtripServiceClientConnection;
+import com.gxwtech.roundtrip2.ServiceData.ServiceClientActions;
+import com.gxwtech.roundtrip2.ServiceData.ServiceCommand;
 
 /**
  * Created by Tim on 27/06/2016.

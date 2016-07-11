@@ -2,8 +2,6 @@ package com.gxwtech.roundtrip2;
 
 import android.app.Application;
 
-import com.gxwtech.roundtrip2.ServiceData.ServiceClientConnection;
-
 /**
  * Created by Tim on 15/06/2016.
  */

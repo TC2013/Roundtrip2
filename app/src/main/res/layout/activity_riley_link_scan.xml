@@ -34,20 +34,12 @@
             android:orientation="vertical"
             android:paddingTop="?attr/actionBarSize">
 
-            <ListView xmlns:android="http://schemas.android.com/apk/res/android"
+            <ListView
                 android:layout_width="match_parent"
-                android:layout_height="600px"
+                android:layout_height="0dp"
                 android:id="@+id/listBTScan"
                 android:background="@color/primary_light"
-                android:foreground="@color/primary_dark"
-                >
-            </ListView>
-
-            <Button
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="TEST"
-                android:onClick="addItem"/>
+                android:layout_weight="1"/>
 
         </LinearLayout>
 

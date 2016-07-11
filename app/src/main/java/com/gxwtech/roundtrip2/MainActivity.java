@@ -228,7 +228,7 @@ public class MainActivity extends AppCompatActivity {
                                 default:
                                     Log.e(TAG, "Unrecognized Notification: '" + note + "'");
                             }
-
+                            break;
                         default:
                             Log.e(TAG, "Unrecognized intent action: " + receivedIntent.getAction());
                     }
