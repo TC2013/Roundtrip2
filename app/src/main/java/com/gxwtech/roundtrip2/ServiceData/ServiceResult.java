@@ -71,4 +71,6 @@ public class ServiceResult extends ServiceMessage {
     public String getResult() {
         return map.getString("result","");
     }
+
+
 }
