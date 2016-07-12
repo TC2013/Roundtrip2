@@ -213,6 +213,8 @@ public class RileyLinkScan extends AppCompatActivity{
                         if (device.getName() != null && device.getName().length() > 0) {
                             mLeDeviceListAdapter.addDevice(device);
                             Log.d(TAG, "Found BLE" + result.toString());
+                        } else {
+                            Log.e(TAG, "Found BLE, but name appears to be missing. Ignoring. " + device.getAddress());
                         }
                     }
                     mLeDeviceListAdapter.notifyDataSetChanged();
@@ -294,6 +296,7 @@ public class RileyLinkScan extends AppCompatActivity{
             }
             viewHolder.deviceName.setText(deviceName);
             viewHolder.deviceAddress.setText(device.getAddress());
+
             return view;
         }
     }
@@ -303,6 +306,5 @@ public class RileyLinkScan extends AppCompatActivity{
         TextView deviceName;
         TextView deviceAddress;
     }
-
 
 }
