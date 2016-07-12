@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <EditTextPreference
+        android:defaultValue="0000"
+        android:key="com.gxwtech.roundtrip2.serviceLocal.PumpIDKey"
+        android:maxLines="1"
+        android:selectAllOnFocus="true"
+        android:singleLine="true"
+        android:numeric="integer"
+        android:title="@string/pref_pump_id" />
+
+    <EditTextPreference
+        android:title="@string/pref_user_max_bolus"
+        android:key="pref_user_max_bolus"
+        android:numeric="integer"
+        android:summary=""/>
+
+    <EditTextPreference
+        android:title="@string/pref_user_max_basal_rate"
+        android:key="pref_user_max_basal_rate"
+        android:numeric="decimal"
+        android:summary=""/>
+
+    <EditTextPreference
+        android:title="@string/pref_user_max_basal_duration"
+        android:key="pref_user_max_basal_duration"
+        android:numeric="integer"
+        android:summary=""/>
+
+</PreferenceScreen>

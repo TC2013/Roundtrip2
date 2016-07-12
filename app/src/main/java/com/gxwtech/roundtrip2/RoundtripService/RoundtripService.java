@@ -14,6 +14,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Parcel;
 import android.os.PowerManager;
+import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
@@ -99,11 +100,17 @@ public class RoundtripService extends Service {
         mContext = getApplicationContext();
         serviceConnection = new RoundtripServiceIPCConnection(mContext);
 
-        sharedPref = mContext.getSharedPreferences(RT2Const.serviceLocal.sharedPreferencesKey, Context.MODE_PRIVATE);
+        //sharedPref = mContext.getSharedPreferences(RT2Const.serviceLocal.sharedPreferencesKey, Context.MODE_PRIVATE);
+        sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 
         // get most recently used pumpID
         pumpIDString = sharedPref.getString(RT2Const.serviceLocal.pumpIDKey,"000000");
         pumpIDBytes = ByteUtil.fromHexString(pumpIDString);
+        if (pumpIDBytes == null) {
+            Log.e(TAG,"Invalid pump ID? " + ByteUtil.shortHexString(pumpIDBytes));
+            pumpIDBytes = new byte[] {0,0,0};
+            pumpIDString = "000000";
+        }
         if (pumpIDBytes.length != 3) {
             Log.e(TAG,"Invalid pump ID? " + ByteUtil.shortHexString(pumpIDBytes));
             pumpIDBytes = new byte[] {0,0,0};
