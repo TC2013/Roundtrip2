@@ -32,6 +32,8 @@ import com.gxwtech.roundtrip2.RoundtripService.Tasks.ReadPumpClockTask;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.RetrieveHistoryPageTask;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.ServiceTask;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.ServiceTaskExecutor;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.UpdatePumpStatusTask;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.WakeAndTuneTask;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.ISFTable;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.PumpHistoryManager;
@@ -476,14 +478,16 @@ public class RoundtripService extends Service {
 
     private void handleIncomingServiceTransport(ServiceTransport serviceTransport) {
         if (serviceTransport.getServiceCommand().isPumpCommand()) {
-            String commandString = serviceTransport.getOriginalCommandName();
-            if ("ReadPumpClock".equals(commandString)) {
-                ServiceTaskExecutor.startTask(new ReadPumpClockTask(serviceTransport));
-            } else if ("RetrieveHistoryPage".equals(commandString)) {
-                ServiceTask task = new RetrieveHistoryPageTask(serviceTransport);
-                ServiceTaskExecutor.startTask(task);
-            } else if ("ReadISFProfile" .equals(commandString)) {
-                ServiceTaskExecutor.startTask(new ReadISFProfileTask(serviceTransport));
+            switch (serviceTransport.getOriginalCommandName()) {
+                case "ReadPumpClock":
+                    ServiceTaskExecutor.startTask(new ReadPumpClockTask(serviceTransport));
+                    break;
+                case "RetrieveHistoryPage":
+                    ServiceTask task = new RetrieveHistoryPageTask(serviceTransport);
+                    ServiceTaskExecutor.startTask(task);
+                    break;
+                case "ReadISFProfile":
+                    ServiceTaskExecutor.startTask(new ReadISFProfileTask(serviceTransport));
                 /*
                 ISFTable table = pumpManager.getPumpISFProfile();
                 ServiceResult result = new ServiceResult();
@@ -498,33 +502,49 @@ public class RoundtripService extends Service {
                 }
                 sendServiceTransportResponse(serviceTransport,result);
                 */
-            } else if ("ReadBolusWizardCarbProfile".equals(commandString)) {
-                ServiceTaskExecutor.startTask(new ReadBolusWizardCarbProfileTask());
-            }
-        } else if ("SetPumpID".equals(serviceTransport.getOriginalCommandName())) {
-            // This one is a command to RoundtripService, not to the PumpManager
-            String pumpID = serviceTransport.getServiceCommand().getMap().getString("pumpID", "");
-            ServiceResult result = new ServiceResult();
-            if ((pumpID != null) && (pumpID.length() == 6)) {
-                setPumpIDString(pumpID);
-                result.setResultOK();
-            } else {
-                Log.e(TAG, "handleIncomingServiceTransport: SetPumpID bundle missing 'pumpID' value");
-                result.setResultError(-1, "Invalid parameter (missing pumpID)");
-            }
-            sendServiceTransportResponse(serviceTransport, result);
-        } else if ("UseThisRileylink".equals(serviceTransport.getOriginalCommandName())) {
-            // If we are not connected, connect using the given address.
-            // If we are connected and the addresses differ, disconnect, connect to new.
-            // If we are connected and the addresses are the same, ignore.
-            String deviceAddress = serviceTransport.getServiceCommand().getMap().getString("rlAddress","");
-            if ("".equals(deviceAddress)) {
-                Log.e(TAG,"handleIPCMessage: null RL address passed");
-            } else {
-                reconfigureRileylink(deviceAddress);
+                    break;
+                case "ReadBolusWizardCarbProfile":
+                    ServiceTaskExecutor.startTask(new ReadBolusWizardCarbProfileTask());
+                    break;
+                case "UpdatePumpStatus":
+                    ServiceTaskExecutor.startTask(new UpdatePumpStatusTask());
+                    break;
+                case "WakeAndTune":
+                    ServiceTaskExecutor.startTask(new WakeAndTuneTask());
+                default:
+                    Log.e(TAG,"Failed to handle pump command: " + serviceTransport.getOriginalCommandName());
+                    break;
             }
         } else {
-            Log.e(TAG,"handleIncomingServiceTransport: Failed to handle service command '"+serviceTransport.getOriginalCommandName()+"'");
+            switch (serviceTransport.getOriginalCommandName()) {
+                case "SetPumpID":
+                    // This one is a command to RoundtripService, not to the PumpManager
+                    String pumpID = serviceTransport.getServiceCommand().getMap().getString("pumpID", "");
+                    ServiceResult result = new ServiceResult();
+                    if ((pumpID != null) && (pumpID.length() == 6)) {
+                        setPumpIDString(pumpID);
+                        result.setResultOK();
+                    } else {
+                        Log.e(TAG, "handleIncomingServiceTransport: SetPumpID bundle missing 'pumpID' value");
+                        result.setResultError(-1, "Invalid parameter (missing pumpID)");
+                    }
+                    sendServiceTransportResponse(serviceTransport, result);
+                    break;
+                case "UseThisRileylink":
+                    // If we are not connected, connect using the given address.
+                    // If we are connected and the addresses differ, disconnect, connect to new.
+                    // If we are connected and the addresses are the same, ignore.
+                    String deviceAddress = serviceTransport.getServiceCommand().getMap().getString("rlAddress", "");
+                    if ("".equals(deviceAddress)) {
+                        Log.e(TAG, "handleIPCMessage: null RL address passed");
+                    } else {
+                        reconfigureRileylink(deviceAddress);
+                    }
+                    break;
+                default:
+                    Log.e(TAG, "handleIncomingServiceTransport: Failed to handle service command '" + serviceTransport.getOriginalCommandName() + "'");
+                    break;
+            }
         }
     }
 

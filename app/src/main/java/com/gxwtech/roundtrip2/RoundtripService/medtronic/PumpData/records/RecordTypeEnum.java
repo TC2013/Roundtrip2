@@ -38,6 +38,8 @@ public enum RecordTypeEnum {
     RECORD_TYPE_AlarmClockReminder((byte)0x35,AlarmClockReminderPumpEvent.class),
     RECORD_TYPE_BGRECEIVED((byte)0x3F,BGReceivedPumpEvent.class),
     RECORD_TYPE_JournalEntryExerciseMarker((byte)0x41,JournalEntryExerciseMarkerPumpEvent.class),
+    RECORD_TYPE_Unknown7Byte_1((byte)0x42,Unknown7ByteEvent1.class),
+    RECORD_TYPE_UnknownInsulinCapture((byte)0x43,UnknownInsulinCaptureEvent.class),
     RECORD_TYPE_CHANGESENSORSETUP2((byte)0x50,ChangeSensorSetup2PumpEvent.class),
     RECORD_TYPE_ChangeSensorRateOfChangeAlertSetup((byte)0x56,ChangeSensorRateOfChangeAlertSetupPumpEvent.class),
     RECORD_TYPE_ChangeBolusScrollStepSize((byte)0x57,ChangeBolusScrollStepSizePumpEvent.class),

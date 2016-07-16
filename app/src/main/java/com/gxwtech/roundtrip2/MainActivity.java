@@ -47,6 +47,9 @@ import android.widget.ListView;
 
 
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
+import com.gxwtech.roundtrip2.ServiceData.BasalProfile;
+import com.gxwtech.roundtrip2.ServiceData.BolusWizardCarbProfile;
+import com.gxwtech.roundtrip2.ServiceData.ISFProfile;
 import com.gxwtech.roundtrip2.ServiceData.PumpModelResult;
 import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceClientActions;
@@ -177,11 +180,12 @@ public class MainActivity extends AppCompatActivity {
                             if (transport.commandDidCompleteOK()) {
                                 String originalCommandName = transport.getOriginalCommandName();
                                 switch (originalCommandName) {
-                                    case "PumpModelResult":
+                                    case "ReadPumpModel":
                                         PumpModelResult modelResult = new PumpModelResult();
                                         modelResult.initFromServiceResult(transport.getServiceResult());
                                         String pumpModelString = modelResult.getPumpModel();
                                         // GGW Tue Jul 12 02:29:54 UTC 2016: ok, now what do we do with the pump model?
+                                        showIdle();
                                         break;
                                     case "ReadPumpClock":
                                         ReadPumpClockResult clockResult = new ReadPumpClockResult();
@@ -196,6 +200,28 @@ public class MainActivity extends AppCompatActivity {
                                         startActivity(new Intent(context, HistoryPageListActivity.class));
                                         // wait for history viewer to announce "ready"
                                         showIdle();
+                                        break;
+                                    case "ISFProfile":
+                                        ISFProfile isfProfile = new ISFProfile();
+                                        isfProfile.initFromServiceResult(transport.getServiceResult());
+                                        // TODO: do something with isfProfile
+                                        showIdle();
+                                        break;
+                                    case "BasalProfile":
+                                        BasalProfile basalProfile = new BasalProfile();
+                                        basalProfile.initFromServiceResult(transport.getServiceResult());
+                                        // TODO: do something with basal profile
+                                        showIdle();
+                                        break;
+                                    case "BolusWizardCarbProfile":
+                                        BolusWizardCarbProfile carbProfile = new BolusWizardCarbProfile();
+                                        carbProfile.initFromServiceResult(transport.getServiceResult());
+                                        // TODO: do something with carb profile
+                                        showIdle();
+                                        break;
+                                    case "UpdatePumpStatus":
+                                        // rebroadcast for HAPP
+
                                         break;
                                     default:
                                         Log.e(TAG, "Dunno what to do with this command completion: " + transport.getOriginalCommandName());
@@ -309,7 +335,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onTunePumpButtonClicked(View view) {
-        //sendIPCMessage(RT2Const.IPC.MSG_PUMP_tunePump);
+        MainApp.getServiceClientConnection().doTunePump();
     }
 
     public void onFetchHistoryButtonClicked(View view) {
@@ -337,6 +363,10 @@ public class MainActivity extends AppCompatActivity {
 
     public void onViewEventLogButtonClicked(View view) {
         startActivity(new Intent(getApplicationContext(),ServiceMessageViewListActivity.class));
+    }
+
+    public void onUpdateAllStatusButtonClicked(View view) {
+        MainApp.getServiceClientConnection().updateAllStatus();
     }
 
     public void onGetCarbProfileButtonClicked(View view) {

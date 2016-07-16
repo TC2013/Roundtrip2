@@ -24,6 +24,7 @@ import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records.Record;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpMessage;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpModel;
+import com.gxwtech.roundtrip2.ServiceData.PumpStatusResult;
 import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
 import com.gxwtech.roundtrip2.util.ByteUtil;
@@ -440,6 +441,82 @@ public class PumpManager {
         double minutesAgo = (Instant.now().getMillis() - lastGoodPumpCommunicationTime.getMillis()) / (1000.0 * 60.0);
         Log.v(TAG,"Last good pump communication was " + minutesAgo + " minutes ago.");
         return lastGoodPumpCommunicationTime;
+    }
+
+    public PumpMessage getRemainingBattery() {
+        PumpMessage getBatteryMsg = makePumpMessage(new MessageType(MessageType.GetBattery),new CarelinkShortMessageBody());
+        PumpMessage resp = sendAndListen(getBatteryMsg);
+        return resp;
+    }
+
+    public PumpMessage getRemainingInsulin() {
+        PumpMessage msg = makePumpMessage(new MessageType(MessageType.CMD_M_READ_INSULIN_REMAINING),new CarelinkShortMessageBody());
+        PumpMessage resp = sendAndListen(msg);
+        return resp;
+    }
+
+    public PumpMessage getCurrentBasalRate() {
+        PumpMessage msg = makePumpMessage(new MessageType(MessageType.ReadTempBasal), new CarelinkShortMessageBody());
+        PumpMessage resp = sendAndListen(msg);
+        return resp;
+    }
+
+    PumpManagerStatus pumpManagerStatus = new PumpManagerStatus();
+
+    public PumpManagerStatus getPumpManagerStatus() { return pumpManagerStatus; }
+
+    public void updatePumpManagerStatus() {
+        PumpMessage resp = getRemainingBattery();
+        if (resp.isValid()) {
+            byte[] remainingBatteryBytes = resp.getContents();
+            if (remainingBatteryBytes != null) {
+                if (remainingBatteryBytes.length == 5) {
+                    /**
+                     * 0x72 0x03, 0x00, 0x00, 0x82
+                     * meaning what ????
+                     */
+                    pumpManagerStatus.remainBattery = ByteUtil.asUINT8(remainingBatteryBytes[5]);
+                }
+            }
+        }
+        resp = getRemainingInsulin();
+        byte[] insulinRemainingBytes = resp.getContents();
+        if (insulinRemainingBytes != null) {
+            if (insulinRemainingBytes.length == 4) {
+                /* 0x73 0x02 0x05 0xd2
+                * the 0xd2 (210) represents 21 units remaining.
+                */
+                double insulinUnitsRemaining = ByteUtil.asUINT8(insulinRemainingBytes[3]) / 10.0;
+                pumpManagerStatus.remainUnits = insulinUnitsRemaining;
+            }
+        }
+        /* current basal */
+        resp = getCurrentBasalRate();
+        byte[] basalRateBytes = resp.getContents();
+        if (basalRateBytes != null) {
+            if (basalRateBytes.length == 2) {
+                /**
+                 * 0x98 0x06
+                 * 0x98 is "basal rate"
+                 * 0x06 is what? Not currently running a temp basal, current basal is "standard" at 0
+                 */
+                double basalRate = ByteUtil.asUINT8(basalRateBytes[1]);
+                pumpManagerStatus.currentBasal = basalRate;
+            }
+        }
+        // get last bolus amount
+        // get last bolus time
+        // get tempBasalInProgress
+        // get tempBasalRatio
+        // get tempBasalRemainMin
+        // get tempBasalStart
+        // get pump time
+        ReadPumpClockResult clockResult = getPumpRTC();
+        if (clockResult.resultIsOK()) {
+            pumpManagerStatus.time = clockResult.getTime().toDate();
+        }
+        // get last sync time
+
     }
 
     public void testPageDecode() {

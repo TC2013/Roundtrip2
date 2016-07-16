@@ -9,6 +9,25 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData;
  *
  * TODO: This class needs to be revisited and probably rewritten. (2016-06-12)
  *
+ *
+ *
+Pete Schwamb
+@ps2
+12:04
+History entries will not reorder themselves, but some events do update, like dual wave bolus entries
+It's like an append only log, and when a page is full, it rotates the page ids and starts appending to a new blank page
+Darrell Wright
+@beached
+12:05
+so the timestamp is entry creation not update
+time
+Pete Schwamb
+@ps2
+12:06
+Yes, I don't think the timestamps ever change
+
+
+ GGW: TODO: examine src/ecc1/medtronic for better history parsing
  */
 
 import android.os.Bundle;

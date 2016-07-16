@@ -46,7 +46,7 @@ public class RT2Const {
 
         // These are used to pass information about the pump from the service to the GUI.
         // has a 'model' field
-        public static final String MSG_PUMP_reportedPumpModel = Prefix + "MSG_PUMP_reportedPumpModel";
+        //public static final String MSG_PUMP_reportedPumpModel = Prefix + "MSG_PUMP_reportedPumpModel";
         public static final String MSG_PUMP_pumpFound = Prefix + "MSG_PUMP_pumpFound";
         public static final String MSG_PUMP_pumpLost = Prefix + "MSG_PUMP_pumpLost";
 

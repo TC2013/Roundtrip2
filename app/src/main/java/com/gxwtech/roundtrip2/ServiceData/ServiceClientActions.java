@@ -119,4 +119,16 @@ public class ServiceClientActions {
         return cmd;
     }
 
+    public static ServiceCommand getPumpModel() {
+        return new ServiceCommand("ReadPumpModel",makeRandomID());
+    }
+
+    public static ServiceCommand makeUpdateAllStatusCommand() {
+        return new ServiceCommand("UpdatePumpStatus",makeRandomID());
+    }
+
+    public static ServiceCommand makeTunePumpCommand() {
+        return new ServiceCommand("WakeAndTune",makeRandomID());
+    }
+
 }
