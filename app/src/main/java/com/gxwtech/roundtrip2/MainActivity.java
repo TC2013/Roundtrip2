@@ -194,6 +194,8 @@ public class MainActivity extends AppCompatActivity {
                                         pumpTimeTextView.setText(clockResult.getTimeString());
                                         showIdle();
                                         break;
+                                    case "FetchPumpHistory":
+
                                     case "RetrieveHistoryPage":
                                         Intent launchHistoryViewIntent = new Intent(context, HistoryPageListActivity.class);
                                         storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
@@ -339,15 +341,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onFetchHistoryButtonClicked(View view) {
-        /* does not work. Crashes sig 11
+        /* does not work. Crashes sig 11 */
         showBusy("Fetch history page 0",50);
-        ServiceCommand retrievePageCommand = ServiceClientActions.makeRetrieveHistoryPageCommand(0);
-        roundtripServiceClientConnection.sendServiceCommand(retrievePageCommand);
-        */
+        MainApp.getServiceClientConnection().doFetchPumpHistory();
     }
 
     public void onFetchSavedHistoryButtonClicked(View view) {
-        //sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchSavedHistory);
+        showBusy("Fetching history (not saved)",50);
+        MainApp.getServiceClientConnection().doFetchSavedHistory();
     }
 
     public void onReadPumpClockButtonClicked(View view) {

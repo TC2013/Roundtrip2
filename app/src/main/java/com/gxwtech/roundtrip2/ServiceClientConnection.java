@@ -126,4 +126,15 @@ public class ServiceClientConnection {
         roundtripServiceClientConnection.sendServiceCommand(command);
     }
 
+    public void doFetchPumpHistory() {
+        ServiceCommand retrievePageCommand = ServiceClientActions.makeFetchPumpHistoryCommand();
+        roundtripServiceClientConnection.sendServiceCommand(retrievePageCommand);
+    }
+
+    public void doFetchSavedHistory() {
+        // Does not (at the moment) fetch saved history :(
+        ServiceCommand cmd = ServiceClientActions.makeFetchPumpHistoryCommand();
+        roundtripServiceClientConnection.sendServiceCommand(cmd);
+    }
+
 }

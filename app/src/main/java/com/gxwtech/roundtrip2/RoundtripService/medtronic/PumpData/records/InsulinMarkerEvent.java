@@ -3,8 +3,13 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.records;
 /**
  * Created by geoff on 7/16/16.
  */
-public class UnknownInsulinCaptureEvent extends TimeStampedRecord {
-    public UnknownInsulinCaptureEvent() {}
+public class InsulinMarkerEvent extends TimeStampedRecord {
+    public InsulinMarkerEvent() {}
+
+    @Override
+    public int getLength() {
+        return 8;
+    }
 
     /*
      Darrell Wright:

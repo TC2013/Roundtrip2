@@ -25,6 +25,7 @@ import com.gxwtech.roundtrip2.RoundtripService.RileyLink.PumpManager;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RFSpy;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.RileyLinkBLE;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.DiscoverGattServicesTask;
+import com.gxwtech.roundtrip2.RoundtripService.Tasks.FetchPumpHistoryTask;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.InitializePumpManagerTask;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.ReadBolusWizardCarbProfileTask;
 import com.gxwtech.roundtrip2.RoundtripService.Tasks.ReadISFProfileTask;
@@ -235,7 +236,7 @@ public class RoundtripService extends Service {
                                     if (numRead == 1024) {
                                         Page p = new Page();
                                         //p.parseFrom(buffer, PumpModel.MM522);
-                                        p.parseByDates(buffer, PumpModel.MM522);
+                                        p.parseFrom(buffer, PumpModel.MM522);
                                         storedHistoryPages.add(p);
                                     } else {
                                         Log.e(TAG, filename + " error: short file");
@@ -481,6 +482,9 @@ public class RoundtripService extends Service {
             switch (serviceTransport.getOriginalCommandName()) {
                 case "ReadPumpClock":
                     ServiceTaskExecutor.startTask(new ReadPumpClockTask(serviceTransport));
+                    break;
+                case "FetchPumpHistory":
+                    ServiceTaskExecutor.startTask(new FetchPumpHistoryTask(serviceTransport));
                     break;
                 case "RetrieveHistoryPage":
                     ServiceTask task = new RetrieveHistoryPageTask(serviceTransport);

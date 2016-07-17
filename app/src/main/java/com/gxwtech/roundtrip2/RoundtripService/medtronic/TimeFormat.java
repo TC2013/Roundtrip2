@@ -2,6 +2,8 @@ package com.gxwtech.roundtrip2.RoundtripService.medtronic;
 
 import android.util.Log;
 
+import com.gxwtech.roundtrip2.util.ByteUtil;
+
 import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
 import org.joda.time.format.DateTimeFormat;
@@ -20,12 +22,12 @@ public class TimeFormat {
     }
 
     public static LocalDate parse2ByteDate(byte[] data, int offset) throws org.joda.time.IllegalFieldValueException {
-        int low = data[0 + offset] & 0x1F;
-        int mhigh = (data[0 + offset] & 0xE0) >> 4;
-        int mlow = (data[1 + offset] & 0x80) >> 7;
+        int low = ByteUtil.asUINT8(data[0 + offset]) & 0x1F;
+        int mhigh = (ByteUtil.asUINT8(data[0 + offset]) & 0xE0) >> 4;
+        int mlow = (ByteUtil.asUINT8(data[1 + offset]) & 0x80) >> 7;
         int month = mhigh + mlow;
         int dayOfMonth = low + 1;
-        int year = 2000 + data[offset + 1] & 0x7F;
+        int year = 2000 + (ByteUtil.asUINT8(data[offset + 1]) & 0x7F);
         /*
         Log.w(TAG, String.format("Attempting to create DateTime from: %04d-%02d-%02d %02d:%02d:%02d",
                 year + 2000, month, dayOfMonth, hour, minutes, seconds));

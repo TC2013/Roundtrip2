@@ -131,4 +131,8 @@ public class ServiceClientActions {
         return new ServiceCommand("WakeAndTune",makeRandomID());
     }
 
+    public static ServiceCommand makeFetchPumpHistoryCommand() {
+        return new ServiceCommand("FetchPumpHistory",makeRandomID());
+    }
+
 }

@@ -42,6 +42,7 @@ public class ServiceCommand extends ServiceMessage {
 
     public boolean isPumpCommand() {
         switch (getCommandName()) {
+            case "FetchPumpHistory":
             case "ReadPumpClock":
             case "RetrieveHistoryPage":
             case "ReadISFProfile":

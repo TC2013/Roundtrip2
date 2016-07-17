@@ -84,6 +84,63 @@ public class Page {
         }
     }
 
+    public boolean parsePicky(byte[] rawPage, PumpModel model) {
+        mRecordList = new ArrayList<>();
+        this.model = model;
+        int pageOffset = 0;
+
+        if ((rawPage == null) || (rawPage.length == 0)) return false;
+        this.data = Arrays.copyOfRange(rawPage, 0, rawPage.length-2);
+        this.crc = Arrays.copyOfRange(rawPage, rawPage.length-2, rawPage.length);
+        byte[] expectedCrc = CRC.calculate16CCITT(this.data);
+        if (DEBUG_PAGE) {
+            Log.i(TAG, String.format("Data length: %d", data.length));
+        }
+        if (!Arrays.equals(crc, expectedCrc)) {
+            Log.w(TAG, String.format("CRC does not match expected value. Expected: %s Was: %s", HexDump.toHexString(expectedCrc), HexDump.toHexString(crc)));
+        } else {
+            if (DEBUG_PAGE) {
+                Log.i(TAG, "CRC OK");
+            }
+        }
+
+        Record record = null;
+        while (pageOffset < data.length) {
+            if (data[pageOffset] == 0) {
+                if (record != null) {
+                    Log.i(TAG,String.format("End of page or Previous parse fail: prev opcode 0x%02x, curr offset %d, %d bytes remaining",
+                            record.getRecordOp(),pageOffset,data.length - pageOffset + 1));
+                    break;
+                } else {
+                    Log.i(TAG, "WTF?");
+                }
+            }
+            try {
+                record = attemptParseRecord(data, pageOffset);
+            } catch (org.joda.time.IllegalFieldValueException e) {
+                record = null;
+            }
+            if (record == null) {
+                Log.i(TAG, "PARSE FAIL");
+                pageOffset++;
+            } else {
+                mRecordList.add(record);
+                pageOffset+=record.getLength();
+            }
+        }
+        ArrayList<Record> pickyRecords = new ArrayList<>();
+        pickyRecords.addAll(mRecordList);
+        parseByDates(rawPage,model);
+        for (Record r : mRecordList) {
+            for (Record r2 : pickyRecords) {
+                if (r.getFoundAtOffset() == r2.getFoundAtOffset()) {
+                    Log.v(TAG,"Found matching record at offset " + r.getFoundAtOffset());
+                }
+            }
+        }
+        return true;
+    }
+
     public boolean parseByDates(byte[] rawPage, PumpModel model) {
         mRecordList = new ArrayList<>();
         if (rawPage.length != 1024) {
@@ -120,9 +177,9 @@ public class Page {
             PumpTimeStamp timestamp = collectTimeStamp(data,pageOffset+2);
             if (timestamp!=null) {
                 String year = timestamp.toString().substring(0,3);
+                Record record;
                 if ("201".equals(year)) {
                     // maybe found a record.
-                    Record record;
                     try {
                         record = attemptParseRecord(data, pageOffset);
                     } catch (org.joda.time.IllegalFieldValueException e) {
@@ -177,73 +234,28 @@ public class Page {
             }
         }
 
-        // Find possible matches for TempBasalRatePumpEvent, TempBasalDurationPumpEvent and BolusWizardBolusEstimatePumpEvent events
-        // (as those are the only ones we care about at the moment. and try to parse them.
         int dataIndex = 0;
         boolean done = false;
         while (!done) {
             Record record = null;
             if (data[dataIndex] != 0) {
-                // just don't bother, if the data byte is zero.
-                /*
-                Log.d(TAG,String.format("Attempting to parse record at offset %d, OpCode is 0x%02X",
-                        dataIndex,data[dataIndex]));
-                        */
+                // If the data byte is zero, assume that means end of page
                 try {
                     record = attemptParseRecord(data, dataIndex);
                 } catch (org.joda.time.IllegalFieldValueException e) {
                     record = null;
                 }
+            } else {
+                Log.v(TAG,"Zero opcode encountered -- end of page. " + (rawPage.length - dataIndex) + " bytes remaining.");
+                break;
             }
             if (record != null) {
                 Log.v(TAG,"parseFrom: found event "+record.getClass().getSimpleName() + " length=" + record.getLength() + " offset=" + record.getFoundAtOffset());
-                // found something.  Is it something we trust or care about?
-                if (record.getRecordOp() == RecordTypeEnum.RECORD_TYPE_BolusWizardBolusEstimate.opcode()) {
-                    BolusWizardBolusEstimatePumpEvent bw = (BolusWizardBolusEstimatePumpEvent)record;
-                    mRecordList.add(record);
-                    /*
-                    Log.d(TAG,String.format("Found BolusWizardBolusEstimatePumpEvent record (time:%s) at offset %d",
-                            bw.getTimeStamp().toString(),dataIndex));
-                            */
-                    if (record.getLength() > 0) {
-                        dataIndex += record.getLength();
-                    } else {
-                        dataIndex +=1;
-                    }
-                } else if (record.getRecordOp() == RecordTypeEnum.RECORD_TYPE_TEMPBASALDURATION.opcode()) {
-                    TempBasalDurationPumpEvent tbd = (TempBasalDurationPumpEvent) record;
-                    mRecordList.add(record);
-                    /*
-                    Log.d(TAG,String.format("Found TempBasalDurationPumpEvent record (time:%s) offset %d, duration %d",
-                            tbd.getTimeStamp(),dataIndex,tbd.durationMinutes));
-                            */
-                    if (record.getLength() > 0) {
-                        dataIndex += record.getLength();
-                    } else {
-                        dataIndex +=1;
-                    }
-                } else if (record.getRecordOp() == RecordTypeEnum.RECORD_TYPE_TEMPBASALRATE.opcode()) {
-                    TempBasalRatePumpEvent tbr = (TempBasalRatePumpEvent) record;
-                    mRecordList.add(record);
-                    /*
-                    Log.d(TAG,String.format("Found TempBasalRatePumpEvent record (time:%s) offset %d, rate %.3f",
-                            tbr.getTimeStamp(),dataIndex,tbr.basalRate));
-                            */
-                    if (record.getLength() > 0) {
-                        dataIndex += record.getLength();
-                    } else {
-                        dataIndex +=1;
-                    }
-                } else {
-                    if (false) {
-                        mRecordList.add(record); // add it anyway.
-                    }
-//                    dataIndex += record.getLength();  // set this to add 1 to try to parse everything we can
-                    dataIndex += 1;  // set this to add 1 to try to parse everything we can
-
-                }
+                mRecordList.add(record);
+                dataIndex += record.getLength();
             } else {
-                dataIndex +=1;
+                Log.e(TAG,String.format("parseFrom: Failed to parse opcode 0x%02x, offset=%d",data[dataIndex],dataIndex));
+                done = true;
             }
             if (dataIndex >= data.length - 2) {
                 done = true;
