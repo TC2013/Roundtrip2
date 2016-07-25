@@ -13,6 +13,9 @@ public class RetrieveHistoryPageTask extends PumpTask {
     public RetrieveHistoryPageTask(ServiceTransport transport) {
         super(transport);
     }
+    private Page page;
+    private RetrieveHistoryPageResult result;
+    private int pageNumber;
 
     @Override
     public void preOp() {
@@ -23,10 +26,11 @@ public class RetrieveHistoryPageTask extends PumpTask {
 
     @Override
     public void run() {
-        int pageNumber = mTransport.getServiceCommand().getMap().getInt("pageNumber");
-        Page page = RoundtripService.getInstance().pumpManager.getPumpHistoryPage(pageNumber);
-        RetrieveHistoryPageResult result = (RetrieveHistoryPageResult) getServiceTransport().getServiceResult();
+        pageNumber = mTransport.getServiceCommand().getMap().getInt("pageNumber");
+        page = RoundtripService.getInstance().pumpManager.getPumpHistoryPage(pageNumber);
+        result = (RetrieveHistoryPageResult) getServiceTransport().getServiceResult();
         result.setResultOK();
+        result.setPageNumber(pageNumber);
         result.setPageBundle(page.pack());
     }
 

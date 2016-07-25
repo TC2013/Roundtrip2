@@ -100,20 +100,55 @@ public class PumpManager {
         RawHistoryPage rval = new RawHistoryPage();
         wakeup(pumpAwakeForMinutes);
         PumpMessage getHistoryMsg = makePumpMessage(new MessageType(MessageType.CMD_M_READ_HISTORY), new GetHistoryPageCarelinkMessageBody(pageNumber));
-        Log.i(TAG,"getPumpHistoryPage("+pageNumber+"): "+ByteUtil.shortHexString(getHistoryMsg.getTxData()));
+        //Log.i(TAG,"getPumpHistoryPage("+pageNumber+"): "+ByteUtil.shortHexString(getHistoryMsg.getTxData()));
+        // Ask the pump to transfer history (we get first frame?)
         PumpMessage firstResponse = runCommandWithArgs(getHistoryMsg);
-        Log.i(TAG,"getPumpHistoryPage("+pageNumber+"): " + ByteUtil.shortHexString(firstResponse.getContents()));
+        //Log.i(TAG,"getPumpHistoryPage("+pageNumber+"): " + ByteUtil.shortHexString(firstResponse.getContents()));
+
         PumpMessage ackMsg = makePumpMessage(MessageType.PumpAck,new PumpAckMessageBody());
         GetHistoryPageCarelinkMessageBody currentResponse = new GetHistoryPageCarelinkMessageBody(firstResponse.getMessageBody().getTxData());
         int expectedFrameNum = 1;
-        while (expectedFrameNum == currentResponse.getFrameNumber()) {
-            expectedFrameNum++;
-            RoundtripService.getInstance().announceProgress(((100/16) * currentResponse.getFrameNumber()+1));
-            Log.i(TAG,"getPumpHistoryPage: Got frame "+currentResponse.getFrameNumber());
-            rval.appendData(currentResponse.getFrameData());
-            PumpMessage nextMsg = sendAndListen(ackMsg);
-            //Log.i(TAG, "getPumpHistoryPage: pump's reply to our sent ack: " + ByteUtil.shortHexString(nextMsg.getContents()));
-            currentResponse = new GetHistoryPageCarelinkMessageBody(nextMsg.getMessageBody().getTxData());
+        boolean done = false;
+        //while (expectedFrameNum == currentResponse.getFrameNumber()) {
+        int failures = 0;
+        while (!done) {
+            // examine current response for problems.
+            byte[] frameData = currentResponse.getFrameData();
+            if ((frameData != null) && (frameData.length > 0) && currentResponse.getFrameNumber() == expectedFrameNum) {
+                // success! got a frame.
+                if (frameData.length != 64) {
+                    Log.w(TAG,"Expected frame of length 64, got frame of length " + frameData.length);
+                    // but append it anyway?
+                }
+                // handle successful frame data
+                rval.appendData(currentResponse.getFrameData());
+                RoundtripService.getInstance().announceProgress(((100/16) * currentResponse.getFrameNumber()+1));
+                Log.i(TAG,"getPumpHistoryPage: Got frame "+currentResponse.getFrameNumber());
+                // Do we need to ask for the next frame?
+                if (expectedFrameNum < 16) { // This number may not be correct for pumps other than 522/722
+                    expectedFrameNum++;
+                } else {
+                    done = true; // successful completion
+                }
+            } else {
+                if (frameData == null) {
+                    Log.e(TAG,"null frame data, retrying");
+                } else if (currentResponse.getFrameNumber() != expectedFrameNum) {
+                    Log.w(TAG, String.format("Expected frame number %d, received %d (retrying)", expectedFrameNum, currentResponse.getFrameNumber()));
+                } else if (frameData.length == 0) {
+                    Log.w(TAG, "Frame has zero length, retrying");
+                }
+                failures++;
+                if (failures == 6) {
+                    Log.e(TAG,String.format("6 failures in attempting to download frame %d of page %d, giving up.",expectedFrameNum,pageNumber));
+                    done = true; // failure completion.
+                }
+            }
+            if (!done) {
+                // ask for next frame
+                PumpMessage nextMsg = sendAndListen(ackMsg);
+                currentResponse = new GetHistoryPageCarelinkMessageBody(nextMsg.getMessageBody().getTxData());
+            }
         }
         if (rval.getLength() != 1024) {
             Log.w(TAG,"getPumpHistoryPage: short page.  Expected length of 1024, found length of "+rval.getLength());

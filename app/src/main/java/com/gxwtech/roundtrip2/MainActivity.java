@@ -195,9 +195,12 @@ public class MainActivity extends AppCompatActivity {
                                         showIdle();
                                         break;
                                     case "FetchPumpHistory":
-
+                                        storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
+                                        startActivity(new Intent(context, HistoryPageListActivity.class));
+                                        // wait for history viewer to announce "ready"
+                                        showIdle();
+                                        break;
                                     case "RetrieveHistoryPage":
-                                        Intent launchHistoryViewIntent = new Intent(context, HistoryPageListActivity.class);
                                         storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
                                         startActivity(new Intent(context, HistoryPageListActivity.class));
                                         // wait for history viewer to announce "ready"

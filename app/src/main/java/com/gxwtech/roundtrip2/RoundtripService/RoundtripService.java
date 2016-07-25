@@ -45,6 +45,7 @@ import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -615,6 +616,23 @@ public class RoundtripService extends Service {
 
     public boolean sendNotification(ServiceNotification notification, Integer clientHashcode) {
         return serviceConnection.sendNotification(notification, clientHashcode);
+    }
+
+    public void saveHistoryPage(int pagenumber, Page page) {
+        if ((page == null) || (page.getRawData() == null)) {
+            return;
+        }
+        String filename = "history-" + pagenumber;
+        FileOutputStream os;
+        try {
+            os = openFileOutput(filename, Context.MODE_PRIVATE);
+            os.write(page.getRawData());
+            os.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
 

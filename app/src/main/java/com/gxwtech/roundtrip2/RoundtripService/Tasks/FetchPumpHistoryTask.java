@@ -1,10 +1,13 @@
 package com.gxwtech.roundtrip2.RoundtripService.Tasks;
 
+import com.gxwtech.roundtrip2.MainApp;
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
 import com.gxwtech.roundtrip2.RoundtripService.medtronic.PumpData.Page;
+import com.gxwtech.roundtrip2.ServiceData.FetchPumpHistoryResult;
 import com.gxwtech.roundtrip2.ServiceData.RetrieveHistoryPageResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 
 /**
@@ -15,6 +18,7 @@ public class FetchPumpHistoryTask extends PumpTask {
     public FetchPumpHistoryTask(ServiceTransport transport) {
         super(transport);
     }
+    private FetchPumpHistoryResult result = new FetchPumpHistoryResult();
 
     @Override
     public void run() {
@@ -23,13 +27,14 @@ public class FetchPumpHistoryTask extends PumpTask {
             Page page = RoundtripService.getInstance().pumpManager.getPumpHistoryPage(i);
             if (page != null) {
                 ra.add(page);
+                RoundtripService.getInstance().saveHistoryPage(i,page);
             }
         }
-        /*
-        RetrieveHistoryPageResult result = (RetrieveHistoryPageResult) getServiceTransport().getServiceResult();
+
+        result.setMap(getServiceTransport().getServiceResult().getMap());
         result.setResultOK();
-        result.setPageBundle(page.pack());
-        */
+        result.setPageArray(ra);
+        getServiceTransport().setServiceResult(result);
     }
 
 
