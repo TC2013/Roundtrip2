@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
@@ -16,7 +15,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
-import android.preference.PreferenceManager;
+import android.os.SystemClock;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
@@ -26,14 +25,20 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.preference.PreferenceManager;
+import android.content.SharedPreferences;
 
 import com.gxwtech.roundtrip2.HistoryActivity.HistoryPageListActivity;
 import android.view.LayoutInflater;
@@ -41,11 +46,18 @@ import android.view.ViewGroup;
 import android.widget.ListView;
 
 
-import com.gxwtech.roundtrip2.CommunicationService.CommunicationService;
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
+import com.gxwtech.roundtrip2.ServiceData.BasalProfile;
+import com.gxwtech.roundtrip2.ServiceData.BolusWizardCarbProfile;
+import com.gxwtech.roundtrip2.ServiceData.ISFProfile;
+import com.gxwtech.roundtrip2.ServiceData.PumpModelResult;
+import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceClientActions;
 import com.gxwtech.roundtrip2.ServiceData.ServiceCommand;
-import com.gxwtech.roundtrip2.RoundtripService.RoundtripServiceIPCFunctions;
+import com.gxwtech.roundtrip2.ServiceData.ServiceNotification;
+import com.gxwtech.roundtrip2.ServiceData.ServiceResult;
+import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
+import com.gxwtech.roundtrip2.ServiceMessageViewActivity.ServiceMessageViewListActivity;
 import com.gxwtech.roundtrip2.util.tools;
 
 import java.util.ArrayList;
@@ -56,7 +68,6 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_ENABLE_BT = 2177; // just something unique.
     private RoundtripServiceClientConnection roundtripServiceClientConnection;
     private BroadcastReceiver mBroadcastReceiver;
-    private RoundtripServiceIPCFunctions clientConnection;
 
     BroadcastReceiver apsAppConnected;
     Bundle storeForHistoryViewer;
@@ -66,26 +77,28 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout mDrawerLinear;
     private Toolbar toolbar;
 
+    public static Context mContext;  // TODO: 09/07/2016 @TIM this should not be needed
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.w(TAG,"onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         setupMenuAndToolbar();
 
+        mContext = this; // TODO: 09/07/2016 @TIM this should not be needed
+
         //Sets default Preferences
         PreferenceManager.setDefaultValues(this, R.xml.pref_pump, false);
         PreferenceManager.setDefaultValues(this, R.xml.pref_rileylink, false);
 
-
-
-        //UI RT Service client connection
-        clientConnection = new RoundtripServiceIPCFunctions();
-
         setBroadcastReceiver();
 
-        /* start the RoundtripService */
 
+
+
+        /* start the RoundtripService */
         /* using startService() will keep the service running until it is explicitly stopped
          * with stopService() or by RoundtripService calling stopSelf().
          * Note that calling startService repeatedly has no ill effects on RoundtripService
@@ -93,12 +106,11 @@ public class MainActivity extends AppCompatActivity {
         // explicitly call startService to keep it running even when the GUI goes away.
         Intent bindIntent = new Intent(this,RoundtripService.class);
         startService(bindIntent);
-        // bind to the service for ease of message passing.
-        //doBindService();
 
-        //Make sure CommunicationService is running, as this maybe first run
-        startService(new Intent(this, CommunicationService.class));
+        linearProgressBar = (ProgressBar)findViewById(R.id.progressBarCommandActivity);
+        spinnyProgressBar = (ProgressBar)findViewById(R.id.progressBarSpinny);
     }
+
 
     @Override
     protected void onResume(){
@@ -118,109 +130,204 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_ENABLE_BT) {
-            RoundtripServiceIPCFunctions client = new RoundtripServiceIPCFunctions();
-
-            if (resultCode == RESULT_OK) {
-                // User allowed Bluetooth to turn on
-                // Let the service know
-                client.sendBLEaccessGranted();
-            } else if (resultCode == RESULT_CANCELED) {
-                // Error, or user said "NO"
-                client.sendBLEaccessDenied();
-                finish();
-            }
-        }
-    }
-
-    public void setBroadcastReceiver(){
+    public void setBroadcastReceiver() {
         //Register this receiver for UI Updates
         mBroadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent receivedIntent) {
 
                 if (receivedIntent == null) {
-                    Log.e(TAG,"onReceive: received null intent");
+                    Log.e(TAG, "onReceive: received null intent");
                 } else {
                     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(MainApp.instance());
+                    ServiceTransport transport;
 
-                        if (RT2Const.local.INTENT_serviceConnected.equals(action)) {
-
-                            sendPUMP_useThisDevice("518163");
-                            sendBLEuseThisDevice("00:07:80:2D:9E:F4"); // for automated testing
-                        } else if (RT2Const.IPC.MSG_BLE_RileyLinkReady.equals(action)) {
                     switch (receivedIntent.getAction()) {
+                        case RT2Const.local.INTENT_serviceConnected:
                         case RT2Const.local.INTENT_NEW_rileylinkAddressKey:
-                            clientConnection.sendBLEuseThisDevice(prefs.getString(RT2Const.serviceLocal.rileylinkAddressKey, ""));
+                            showIdle();
+                            /**
+                             * Client MUST send a "UseThisRileylink" message because it asserts that
+                             * the user has given explicit permission to use bluetooth.
+                             *
+                             * We can change the format so that it is a simple "bluetooth OK" message,
+                             * rather than an explicit address of a Rileylink, and the Service can
+                             * use the last known good value.  But the kick-off of bluetooth ops must
+                             * come from an Activity.
+                             */
+                            String RileylinkBLEAddress = prefs.getString(RT2Const.serviceLocal.rileylinkAddressKey, "");
+                            if (RileylinkBLEAddress.equals("")){
+                                // TODO: 11/07/2016 @TIM UI message for user
+                                Log.e(TAG, "No Rileylink BLE Address saved in app");
+                            } else {
+                                showBusy("Configuring Service", 50);
+                                MainApp.getServiceClientConnection().setThisRileylink(RileylinkBLEAddress);
+                            }
                             break;
                         case RT2Const.local.INTENT_NEW_pumpIDKey:
-                            clientConnection.sendPUMP_useThisDevice(prefs.getString(RT2Const.serviceLocal.pumpIDKey, ""));
-                            break;
-                        case RT2Const.IPC.MSG_BLE_RileyLinkReady:
-                            setRileylinkStatusMessage("OK");
-                            break;
-                        case RT2Const.IPC.MSG_BLE_requestAccess:
-                            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-                            break;
-                        case RT2Const.IPC.MSG_PUMP_pumpFound:
-                            setPumpStatusMessage("OK");
-                            break;
-                        case RT2Const.IPC.MSG_PUMP_pumpLost:
-                            setPumpStatusMessage("Lost");
-                            break;
-                        case RT2Const.IPC.MSG_PUMP_reportedPumpModel:
-                            Bundle bundle = receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey);
-                            String modelString = bundle.getString("model", "(unknown)");
-                            setPumpStatusMessage(modelString);
-                            break;
-                        case RT2Const.IPC.MSG_PUMP_history:
-                            Intent launchHistoryViewIntent = new Intent(context,HistoryPageListActivity.class);
-                            storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
-                            //startActivity(new Intent(context,HistoryPageListActivity.class));
-                            // wait for history viwere to announce "ready"
+                            MainApp.getServiceClientConnection().sendPUMP_useThisDevice(prefs.getString(RT2Const.serviceLocal.pumpIDKey, ""));
                             break;
                         case RT2Const.local.INTENT_historyPageViewerReady:
                             Intent sendHistoryIntent = new Intent(RT2Const.local.INTENT_historyPageBundleIncoming);
                             sendHistoryIntent.putExtra(RT2Const.IPC.MSG_PUMP_history_key, storeForHistoryViewer);
                             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(sendHistoryIntent);
-                        } else if (RT2Const.IPC.MSG_ServiceResult.equals(action)) {
-                            Log.i(TAG,"Received ServiceResult");
-                        } else {
-                            Log.e(TAG,"Unrecognized intent action: " + action);
-                        }
+                            break;
+                        case RT2Const.IPC.MSG_ServiceResult:
+                            Log.i(TAG, "Received ServiceResult");
+
+                            Bundle bundle = receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey);
+                            transport = new ServiceTransport(bundle);
+                            if (transport.commandDidCompleteOK()) {
+                                String originalCommandName = transport.getOriginalCommandName();
+                                switch (originalCommandName) {
+                                    case "ReadPumpModel":
+                                        PumpModelResult modelResult = new PumpModelResult();
+                                        modelResult.initFromServiceResult(transport.getServiceResult());
+                                        String pumpModelString = modelResult.getPumpModel();
+                                        // GGW Tue Jul 12 02:29:54 UTC 2016: ok, now what do we do with the pump model?
+                                        showIdle();
+                                        break;
+                                    case "ReadPumpClock":
+                                        ReadPumpClockResult clockResult = new ReadPumpClockResult();
+                                        clockResult.initFromServiceResult(transport.getServiceResult());
+                                        TextView pumpTimeTextView = (TextView) findViewById(R.id.textViewPumpClockTime);
+                                        pumpTimeTextView.setText(clockResult.getTimeString());
+                                        showIdle();
+                                        break;
+                                    case "FetchPumpHistory":
+                                        storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
+                                        startActivity(new Intent(context, HistoryPageListActivity.class));
+                                        // wait for history viewer to announce "ready"
+                                        showIdle();
+                                        break;
+                                    case "RetrieveHistoryPage":
+                                        storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
+                                        startActivity(new Intent(context, HistoryPageListActivity.class));
+                                        // wait for history viewer to announce "ready"
+                                        showIdle();
+                                        break;
+                                    case "ISFProfile":
+                                        ISFProfile isfProfile = new ISFProfile();
+                                        isfProfile.initFromServiceResult(transport.getServiceResult());
+                                        // TODO: do something with isfProfile
+                                        showIdle();
+                                        break;
+                                    case "BasalProfile":
+                                        BasalProfile basalProfile = new BasalProfile();
+                                        basalProfile.initFromServiceResult(transport.getServiceResult());
+                                        // TODO: do something with basal profile
+                                        showIdle();
+                                        break;
+                                    case "BolusWizardCarbProfile":
+                                        BolusWizardCarbProfile carbProfile = new BolusWizardCarbProfile();
+                                        carbProfile.initFromServiceResult(transport.getServiceResult());
+                                        // TODO: do something with carb profile
+                                        showIdle();
+                                        break;
+                                    case "UpdatePumpStatus":
+                                        // rebroadcast for HAPP
+
+                                        break;
+                                    default:
+                                        Log.e(TAG, "Dunno what to do with this command completion: " + transport.getOriginalCommandName());
+                                }
+                            } else {
+                                Log.e(TAG,"Command failed? " + transport.getOriginalCommandName());
+                            }
+                            break;
+                        case RT2Const.IPC.MSG_ServiceNotification:
+                            transport = new ServiceTransport(receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey));
+                            ServiceNotification notification = transport.getServiceNotification();
+                            String note = notification.getNotificationType();
+                            switch (note) {
+                                case RT2Const.IPC.MSG_BLE_RileyLinkReady:
+                                    setRileylinkStatusMessage("OK");
+                                    break;
+                                case RT2Const.IPC.MSG_PUMP_pumpFound:
+                                    setPumpStatusMessage("OK");
+                                    break;
+                                case RT2Const.IPC.MSG_PUMP_pumpLost:
+                                    setPumpStatusMessage("Lost");
+                                    break;
+                                case RT2Const.IPC.MSG_note_WakingPump:
+                                    showBusy("Waking Pump", 99);
+                                    break;
+                                case RT2Const.IPC.MSG_note_FindingRileyLink:
+                                    showBusy("Finding RileyLink", 99);
+                                    break;
+                                case RT2Const.IPC.MSG_note_Idle:
+                                    showIdle();
+                                    break;
+                                default:
+                                    Log.e(TAG, "Unrecognized Notification: '" + note + "'");
+                            }
+                            break;
+                        default:
+                            Log.e(TAG, "Unrecognized intent action: " + receivedIntent.getAction());
                     }
                 }
             }
         };
 
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(RT2Const.IPC.MSG_BLE_RileyLinkReady);
-        intentFilter.addAction(RT2Const.IPC.MSG_BLE_requestAccess);
-        intentFilter.addAction(RT2Const.IPC.MSG_PUMP_pumpFound);
-        intentFilter.addAction(RT2Const.IPC.MSG_PUMP_pumpLost);
-        intentFilter.addAction(RT2Const.IPC.MSG_PUMP_reportedPumpModel);
-        intentFilter.addAction(RT2Const.IPC.MSG_PUMP_history);
+        intentFilter.addAction(RT2Const.local.INTENT_serviceConnected);
         intentFilter.addAction(RT2Const.IPC.MSG_ServiceResult);
+        intentFilter.addAction(RT2Const.IPC.MSG_ServiceNotification);
         intentFilter.addAction(RT2Const.local.INTENT_historyPageViewerReady);
-        intentFilter.addAction(RT2Const.local.INTENT_NEW_rileylinkAddressKey);
-        intentFilter.addAction(RT2Const.local.INTENT_NEW_pumpIDKey);
 
 
+        linearProgressBar = (ProgressBar)findViewById(R.id.progressBarCommandActivity);
+        spinnyProgressBar = (ProgressBar)findViewById(R.id.progressBarSpinny);
         LocalBroadcastManager.getInstance(MainApp.instance()).registerReceiver(mBroadcastReceiver, intentFilter);
     }
 
 
 
 
-    /*
-    *
-    *  GUI element functions
-    *
+
+
+    /**
+     *
+     *  GUI element functions
+     *
      */
+
+
+    private int mProgress = 0;
+    private int mSpinnyProgress = 0;
+    private ProgressBar linearProgressBar;
+    private ProgressBar spinnyProgressBar;
+    private static final int spinnyFPS = 10;
+    private Thread spinnyThread;
+    void showBusy(String activityString, int progress) {
+        mProgress = progress;
+        TextView tv = (TextView)findViewById(R.id.textViewActivity);
+        tv.setText(activityString);
+        linearProgressBar.setProgress(progress);
+        if (progress > 0) {
+            spinnyProgressBar.setVisibility(View.VISIBLE);
+            if (spinnyThread == null) {
+                spinnyThread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        while ((mProgress > 0) && (mProgress < 100)) {
+                            mSpinnyProgress += 100 / spinnyFPS;
+                            spinnyProgressBar.setProgress(mSpinnyProgress);
+                            SystemClock.sleep(1000 / spinnyFPS);
+                        }
+                        spinnyThread = null;
+                    }
+                });
+                spinnyThread.start();
+            }
+        } else {
+            spinnyProgressBar.setVisibility(View.INVISIBLE);
+        }
+    }
+
+    void showIdle() {
+        showBusy("Idle",0);
+    }
 
     void setRileylinkStatusMessage(String statusMessage) {
         TextView field = (TextView)findViewById(R.id.textViewFieldRileyLink);
@@ -233,20 +340,42 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onTunePumpButtonClicked(View view) {
-        clientConnection.sendIPCMessage(RT2Const.IPC.MSG_PUMP_tunePump);
+        MainApp.getServiceClientConnection().doTunePump();
     }
 
     public void onFetchHistoryButtonClicked(View view) {
-        clientConnection.sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchHistory);
+        /* does not work. Crashes sig 11 */
+        showBusy("Fetch history page 0",50);
+        MainApp.getServiceClientConnection().doFetchPumpHistory();
     }
 
     public void onFetchSavedHistoryButtonClicked(View view) {
-        clientConnection.sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchSavedHistory);
+        showBusy("Fetching history (not saved)",50);
+        MainApp.getServiceClientConnection().doFetchSavedHistory();
     }
 
     public void onReadPumpClockButtonClicked(View view) {
-        ServiceCommand readPumpClockCommand = ServiceClientActions.makeReadPumpClockCommand();
-        roundtripServiceClientConnection.sendServiceCommand(readPumpClockCommand);
+        showBusy("Reading Pump Clock",50);
+        MainApp.getServiceClientConnection().readPumpClock();
+    }
+
+    public void onGetISFProfileButtonClicked(View view) {
+        //ServiceCommand getISFProfileCommand = ServiceClientActions.makeReadISFProfileCommand();
+        //roundtripServiceClientConnection.sendServiceCommand(getISFProfileCommand);
+        MainApp.getServiceClientConnection().readISFProfile();
+    }
+
+    public void onViewEventLogButtonClicked(View view) {
+        startActivity(new Intent(getApplicationContext(),ServiceMessageViewListActivity.class));
+    }
+
+    public void onUpdateAllStatusButtonClicked(View view) {
+        MainApp.getServiceClientConnection().updateAllStatus();
+    }
+
+    public void onGetCarbProfileButtonClicked(View view) {
+        showBusy("Getting Carb Profile",1);
+        roundtripServiceClientConnection.sendServiceCommand(ServiceClientActions.makeReadBolusWizardCarbProfileCommand());
     }
 
     /* UI Setup */
@@ -322,7 +451,8 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case 2:
                         //Treatment Logs
-                        startActivity(new Intent(getApplicationContext(), TreatmentHistory.class));
+                        // TODO: 09/07/2016 @TIM add treatment history activity once we know if we will be using Active Android or not
+                        //startActivity(new Intent(getApplicationContext(), TreatmentHistory.class));
                         break;
                     case 3:
                         //Settings

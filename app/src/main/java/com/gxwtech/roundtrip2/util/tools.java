@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.text.ClipboardManager;
+import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -43,7 +44,7 @@ public class tools {
 
     public static void showAlertText(final String msg, final Context context){
         try {
-            AlertDialog alertDialog = new AlertDialog.Builder(context)
+            AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.mContext) // TODO: 09/07/2016 @TIM this should not be needed, should be context
                     .setMessage(msg)
                     .setPositiveButton("Copy to Clipboard", new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int which) {
@@ -65,6 +66,7 @@ public class tools {
             }
         } catch (Exception e){
             //Crashlytics.logException(e);
+            Log.e(TAG, "showAlertText: " + e.getLocalizedMessage());
         }
     }
 }

@@ -12,4 +12,5 @@ public class BLECommOperationResult {
     public static final int RESULT_TIMEOUT = 2;
     public static final int RESULT_BUSY = 3;
     public static final int RESULT_INTERRUPTED = 4;
+    public static final int RESULT_NOT_CONFIGURED = 5;
 }

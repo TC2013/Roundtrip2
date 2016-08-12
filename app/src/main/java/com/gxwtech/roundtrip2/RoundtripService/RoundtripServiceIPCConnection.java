@@ -12,8 +12,9 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.gxwtech.roundtrip2.RT2Const;
+import com.gxwtech.roundtrip2.ServiceData.ServiceNotification;
+import com.gxwtech.roundtrip2.ServiceData.ServiceTransport;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
@@ -44,7 +45,7 @@ public class RoundtripServiceIPCConnection {
                     try {
                         msg.replyTo.send(myReply);
                         mClients.put(mClients.hashCode(),msg.replyTo);
-                        Log.d(TAG,"handleMessage: Registered client");
+                        Log.v(TAG,"handleMessage: Registered client");
                     } catch (RemoteException e) {
                         // I guess they aren't registered after all...
                         Log.e(TAG,"handleMessage: failed to send acknowledgement of registration");
@@ -52,17 +53,25 @@ public class RoundtripServiceIPCConnection {
 
                     break;
                 case RT2Const.IPC.MSG_unregisterClient:
+                    Log.v(TAG,"Unregistered client");
                     mClients.remove(msg.replyTo.hashCode());
+                    break;
                 case RT2Const.IPC.MSG_IPC:
                     // As the current thread is likely a GUI thread from some app,
                     // rebroadcast the message as a local item.
                     // Convert from Message to Intent
                     if (msg.replyTo != null) {
-                        Log.d(TAG, "Received IPC message from client " + msg.replyTo.toString());
-                        bundle.putInt(RT2Const.serviceLocal.IPCReplyTo_hashCodeKey, msg.replyTo.hashCode());
-                        Intent intent = new Intent(bundle.getString(RT2Const.IPC.messageKey));
-                        intent.putExtra(RT2Const.IPC.bundleKey, bundle);
-                        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+                        try {
+                            ServiceTransport transport = new ServiceTransport(bundle);
+                            Log.d(TAG, "Service received IPC message" + transport.describeContentsShort());
+                            transport.setSenderHashcode(msg.replyTo.hashCode());
+                            Intent intent = new Intent(transport.getTransportType());
+                            intent.putExtra(RT2Const.IPC.bundleKey, transport.getMap());
+                            LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+                        } catch (IllegalArgumentException e) {
+                            // This can happen on screen tilts... what else is wrong?
+                            Log.e(TAG,"Malformed service bundle: " + bundle.toString());
+                        }
                     }
                     break;
                 /*
@@ -84,6 +93,13 @@ public class RoundtripServiceIPCConnection {
         return mMessenger.getBinder();
     }
 
+    public boolean sendNotification(ServiceNotification notification, Integer clientHashcode) {
+        ServiceTransport transport = new ServiceTransport();
+        transport.setServiceNotification(notification);
+        transport.setTransportType(RT2Const.IPC.MSG_ServiceNotification);
+        return sendTransport(transport,clientHashcode);
+    }
+
     // if clientHashcode is null, broadcast to all clients
     public boolean sendMessage(Message msg, Integer clientHashcode) {
         Messenger clientMessenger = null;
@@ -92,7 +108,7 @@ public class RoundtripServiceIPCConnection {
             if (msg.what == RT2Const.IPC.MSG_IPC) {
                 Log.e(TAG, "sendMessage: no clients, cannot send: " + msg.getData().getString(RT2Const.IPC.messageKey, "(unknown)"));
             } else {
-                Log.e(TAG, "sendMessage: no clients, cannot send: what="+msg.what);
+                Log.e(TAG, "sendMessage: no clients, cannot send: what=" + msg.what);
             }
         } else {
             if (clientHashcode != null) {
@@ -105,16 +121,24 @@ public class RoundtripServiceIPCConnection {
                 } else {
                     // send to all clients
                     for (Integer clientHash : mClients.keySet()) {
-                        mClients.get(clientHash).send(msg);
+                        Message m2 = Message.obtain(msg);
+                        mClients.get(clientHash).send(m2);
                     }
                 }
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
+            /*
+            catch (IllegalStateException e) {
+                // This happens every time we are in a bluetooth operation and the screen is turned.
+                Log.e(TAG,"sendMessage: IllegalStateException");
+            }
+            */
         }
         return true;
     }
 
+    /*
     public void sendMessage(String messageType) {
         Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC,0,0);
         // Create a bundle with the data
@@ -126,11 +150,16 @@ public class RoundtripServiceIPCConnection {
         sendMessage(msg, null);
         Log.d(TAG,"sendMessage: sent "+messageType);
     }
+    */
 
-    public void sendMessageBundle(Bundle messageBundle, Integer clientHashcode) {
+    public boolean sendTransport(ServiceTransport transport, Integer clientHashcode) {
         Message msg = Message.obtain(null, RT2Const.IPC.MSG_IPC,0,0);
         // Set payload
-        msg.setData(messageBundle);
-        sendMessage(msg, clientHashcode);
+        msg.setData(transport.getMap());
+        Log.d(TAG,"Service sending message to " + String.valueOf(clientHashcode) + ": " + transport.describeContentsShort());
+        if ((clientHashcode != null) && (clientHashcode == 0)) {
+            return sendMessage(msg, null);
+        }
+        return sendMessage(msg, clientHashcode);
     }
 }

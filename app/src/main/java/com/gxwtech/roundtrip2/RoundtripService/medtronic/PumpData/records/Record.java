@@ -35,7 +35,16 @@ abstract public class Record {
             return false;
         }
         recordOp = data[0];
-        return parseFrom(data,model);
+        boolean didParse = parseFrom(data,model);
+        if (didParse) {
+            captureRawBytes(data);
+        }
+        return didParse;
+    }
+
+    public void captureRawBytes(byte[] data) {
+        this.rawbytes = new byte[getLength()];
+        System.arraycopy(data, 0, this.rawbytes,0,getLength()-1);
     }
 
     public boolean parseFrom(byte[] data, PumpModel model) {
