@@ -52,6 +52,15 @@
                 <action android:name="com.gxwtech.roundtrip2.DeviceScanActivity" />
             </intent-filter>
         </service>
+        <service
+            android:name=".CommunicationService.CommunicationService"
+            android:enabled="true"
+            android:exported="true"
+            android:process=":CommunicationService">
+            <intent-filter>
+                <action android:name="com.gxwtech.roundtrip2.CommunicationService.CommunicationService"></action>
+            </intent-filter>
+        </service>
 
         <activity
             android:name=".HistoryActivity.HistoryPageListActivity"
@@ -84,6 +93,15 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".ServiceMessageViewActivity.ServiceMessageViewListActivity" />
         </activity>
+        <activity
+            android:name=".TreatmentHistory"
+            android:label="@string/title_treatment_history"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.gxwtech.roundtrip2.MainActivity" />
+        </activity>
+
         <activity
             android:name=".SettingsActivity"
             android:label="@string/title_activity_settings" />

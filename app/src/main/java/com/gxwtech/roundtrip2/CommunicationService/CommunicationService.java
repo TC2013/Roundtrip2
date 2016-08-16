@@ -15,16 +15,20 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.gxwtech.roundtrip2.CommunicationService.Objects.Bolus;
+import com.gxwtech.roundtrip2.CommunicationService.Objects.DateDeserializer;
+import com.gxwtech.roundtrip2.CommunicationService.Objects.Integration;
+import com.gxwtech.roundtrip2.CommunicationService.Objects.IntegrationSerializer;
+import com.gxwtech.roundtrip2.CommunicationService.Objects.RealmManager;
+import com.gxwtech.roundtrip2.CommunicationService.Objects.TempBasal;
 import com.gxwtech.roundtrip2.MainApp;
+import com.gxwtech.roundtrip2.RT2Const;
 import com.gxwtech.roundtrip2.util.Check;
 
-import com.gxwtech.roundtrip2.CommunicationService.Objects.ObjectToSync;
-import com.gxwtech.roundtrip2.CommunicationService.Objects.Basal;
-import com.gxwtech.roundtrip2.CommunicationService.Objects.Treatment;
 
-
-import java.lang.reflect.Type;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -39,206 +43,141 @@ public class CommunicationService extends android.app.Service {
     class IncomingHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
-            String action="";
-            Long requested=0L;
-            String dataString="";
-            String safteyCheck="";
+            String action = "";
+            Long requested = 0L;
+            String safteyCheck = "";
+            String pump = "";
+            List<Integration> remoteIntegrations;
+            List<String> remoteTreatments;
             Bundle data = new Bundle();
+            RealmManager realmManager = new RealmManager();
 
-            Log.d(TAG,"START");
+            Log.d(TAG, "START");
             try {
-                data = msg.getData();
-                action = data.getString("ACTION");
-                Log.d("RECEIVED: ACTION", action);
-                requested = data.getLong("DATE_REQUESTED", 0);
-                Log.d("RECEIVED: DATE", requested.toString());
-                dataString = data.getString("DATA");
-                Log.d("RECEIVED: DATA", dataString);
 
-            } catch (Exception e){
+                /*
+                Expected Bundle data...
+                "ACTION"                -   What is this incoming request? Example: "NEW_TREATMENTS"
+                "DATE_REQUESTED"        -   When was this requested? So we can ignore old requests
+                "PUMP"                  -   Name of the pump the APS expects this app to support
+                "INTEGRATION_OBJECTS"   -   Array of Integration Objects, details of the objects being synced.  *OPTIONAL for NEW_TREATMENTS only*
+                "TREATMENT_OBJECTS"     -   Array of Objects themselves being synced, TempBasal or Bolus        *OPTIONAL for NEW_TREATMENTS only*
+                 */
+
+                data = msg.getData();
+                action = data.getString(RT2Const.commService.ACTION);
+                requested = data.getLong(RT2Const.commService.DATE_REQUESTED, 0);
+                pump = data.getString(RT2Const.commService.PUMP);
+                Log.d("RECEIVED: ACTION", action);
+                Log.d("RECEIVED: DATE", requested.toString());
+                Log.d("RECEIVED: PUMP", pump);
+
+            } catch (Exception e) {
                 e.printStackTrace();
                 // TODO: 16/01/2016 Issue getting treatment details from APS app msg for user
+            }
 
-            } finally {
-                //Toast.makeText(MainApp.instance(), action, Toast.LENGTH_LONG).show();
 
-                switch (action){
-                    case "TEST_MSG":
-                        Resources appR = MainApp.instance().getResources();
-                        CharSequence txt = appR.getText(appR.getIdentifier("app_name", "string", MainApp.instance().getPackageName()));
-                        Toast.makeText(MainApp.instance(), txt + ": Pump Driver App has connected successfully. ", Toast.LENGTH_LONG).show();
-                        Log.d(TAG,txt + ": APS app has connected successfully.");
+            switch (action) {
+                case RT2Const.commService.INCOMING_TEST_MSG:
+                    Resources appR = MainApp.instance().getResources();
+                    CharSequence txt = appR.getText(appR.getIdentifier("app_name", "string", MainApp.instance().getPackageName()));
+                    Toast.makeText(MainApp.instance(), txt + ": Pump Driver App has connected successfully. ", Toast.LENGTH_LONG).show();
+                    Log.d(TAG, txt + ": APS app has connected successfully.");
 
-                        break;
-                    case "temp_basal":
-                    case "cancel_temp_basal":
-                        ObjectToSync basalSync = new Gson().fromJson(dataString, ObjectToSync.class);
+                    break;
+                case RT2Const.commService.INCOMING_NEW_TREATMENTS:
+                    GsonBuilder gsonBuilder = new GsonBuilder();
+                    gsonBuilder.registerTypeAdapter(Date.class, new DateDeserializer());
+                    Gson gson = gsonBuilder.create();
 
-                        Basal basal = new Basal();
-                        basal.rate          =   basalSync.value1;
-                        basal.ratePercent   =   Integer.parseInt(basalSync.value2);
-                        basal.duration      =   Integer.parseInt(basalSync.value3);
-                        basal.start_time    =   basalSync.requested;
+                    remoteIntegrations  = gson.fromJson(data.getString(RT2Const.commService.INTEGRATION_OBJECTS), new TypeToken<List<Integration>>() {}.getType());
+                    remoteTreatments    = gson.fromJson(data.getString(RT2Const.commService.TREATMENT_OBJECTS), new TypeToken<List<String>>() {}.getType());
+                    Log.d("RECEIVED: INTEGRATIONS", remoteIntegrations.toString());
+                    Log.d("RECEIVED: TREATMENTS", remoteTreatments.toString());
 
-                        basal.action        =   basalSync.action;
-                        basal.been_set      =   false;
-                        basal.aps_int_id    =   basalSync.aps_integration_id;
-                        basal.auth_code     =   basalSync.integrationSecretCode;
+                    for (int i = 0; i < remoteIntegrations.size(); i++) {
 
-                        safteyCheck         =   Check.NewObjectToSync(basalSync);
-                        if (safteyCheck.equals("")) {
-                            basal.state     =   "received";
-                        } else {
-                            basal.state      =   "error";
-                            basal.details    =   safteyCheck;
-                            basal.rejected   =   true;
-                            basal.aps_update =   true;
-                        }
-                        basal.save();
+                        realmManager.getRealm().beginTransaction();
 
-                        //We have now saved the requested treatments from APS app to our local DB, now action them
-                        connect_to_aps_app();
-                        actionBasal();
+                        Integration integrationForAPS = remoteIntegrations.get(i);
+                        integrationForAPS.setType           ("aps_app");
+                        integrationForAPS.setState          ("received");
+                        integrationForAPS.setToSync         (true);
+                        integrationForAPS.setDate_updated   (new Date());
+                        integrationForAPS.setRemote_id(remoteIntegrations.get(i).getLocal_object_id());
 
-                        break;
-                    case "bolus_delivery":
-                        Type type = new TypeToken<List<ObjectToSync>>(){}.getType();
-                        List<ObjectToSync> bolusList = new Gson().fromJson(dataString, type);
+                        Integration integrationForPump = new Integration();
+                        integrationForPump.setType          ("pump");
+                        integrationForPump.setDate_updated  (new Date());
+                        integrationForPump.setLocal_object(remoteIntegrations.get(i).getLocal_object());
 
-                        for (ObjectToSync newBolus : bolusList){
-                            try {
-                                Treatment newTreatment = new Treatment();
-                                newTreatment.type           =   newBolus.value3;
-                                newTreatment.date_requested =   newBolus.requested.getTime();
-                                newTreatment.value          =   newBolus.value1;
+                        String localObjectlID = "", localObjectState = "", localObjectDetails = "", rejectRequest = "";
+                        if (!Check.isPumpSupported(pump))
+                            rejectRequest += "Pump requested not supported. ";
+                        if (Check.isRequestTooOld(requested)) rejectRequest += "Request too old. ";
 
-                                newTreatment.delivered      =   false;
-                                newTreatment.aps_int_id     =   newBolus.aps_integration_id;
-                                newTreatment.auth_code      =   newBolus.integrationSecretCode;
+                        switch (remoteIntegrations.get(i).getLocal_object()) {
+                            case "temp_basal":
+                                TempBasal tempBasal = gson.fromJson(remoteTreatments.get(i), TempBasal.class);
+                                realmManager.getRealm().copyToRealm(tempBasal);
+                                localObjectlID = tempBasal.getId();
 
-                                safteyCheck                 = Check.NewObjectToSync(newBolus);
-                                if (safteyCheck.equals("")){
-                                    newTreatment.state      =   "received";
-                                } else {
-                                    newTreatment.state      =   "error";
-                                    newTreatment.details    =   safteyCheck;
-                                    newTreatment.rejected   =   true;
-                                    newTreatment.aps_update =   true;
+                                switch (remoteIntegrations.get(i).getAction()) {
+                                    case "new":
+                                        rejectRequest += Check.isNewTempBasalSafe(tempBasal);
+                                        if (rejectRequest.equals("")) // TODO: 12/08/2016 command to send TempBasal to pump
+                                            break;
+                                    case "cancel":
+                                        rejectRequest += Check.isCancelTempBasalSafe(tempBasal, integrationForAPS, realmManager.getRealm());
+                                        if (rejectRequest.equals("")) // TODO: 12/08/2016 command to send TempBasal to pump
+                                            break;
                                 }
-                                newTreatment.save();
+                                break;
 
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                                // TODO: 16/01/2016 Issue getting treatment details
-                            }
+                            case "bolus_delivery":
+                                Bolus bolus = gson.fromJson(remoteTreatments.get(i), Bolus.class);
+                                realmManager.getRealm().copyToRealm(bolus);
+                                localObjectlID = bolus.getId();
+                                rejectRequest += Check.isBolusSafeToAction(bolus);
+
+                                if (rejectRequest.equals("")) //TODO: 12/08/2016 command to action Bolus
+
+                                    break;
                         }
 
-
-                        //We have now saved the requested treatments from APS App to our local DB, now action them
-                        connect_to_aps_app();
-                        actionBolus();
-                        break;
-                }
-            }
-        }
-    }
-
-
-
-    public void actionBolus(){
-
-        List<Treatment> boluses = Treatment.getToBeActioned();                                      //Get all boluses yet to be processed
-
-        for (Treatment bolus : boluses){
-
-            if (Check.IsBolusSafeToAction(bolus)) {
-
-                String actionResult = "delivered";                                                  // TODO: 16/01/2016 a function should be here to action the treatment and get result
-
-                if (actionResult.equals("delivered")) {
-                    bolus.state         =   "delivered";
-                    bolus.details       =   "Treatment has been sent to the pump";
-                    bolus.delivered     =   true;
-                    bolus.aps_update   =   true;
-                    bolus.save();
-                } else {
-                    bolus.state         =   "error";
-                    bolus.details       =   actionResult;
-                    bolus.delivered     =   false;
-                    bolus.rejected      =   true;
-                    bolus.aps_update   =   true;
-                    bolus.save();
-                }
-            }
-
-        }
-        if (boluses.size() > 0) {
-            connect_to_aps_app();
-            Intent intent = new Intent("UPDATE_TREATMENTS");                                        //sends result to update UI if loaded
-            MainApp.instance().sendBroadcast(intent);
-        }
-    }
-
-    public void actionBasal(){
-
-        Basal recentRequest = Basal.lastRequested();                                                //Basal most recently requested and has not been set
-
-        if (recentRequest != null){
-
-            if (Check.IsBasalSafeToAction(recentRequest)) {
-                String actionResult = "";
-
-                switch (recentRequest.action) {
-                    case "new":
-
-                        actionResult = "set";                                                       // TODO: 16/01/2016 a function should be here to action the TBR and get result
-
-                        if (actionResult.equals("set")) {
-                            recentRequest.state         =   "set";
-                            recentRequest.details       =   "Temp Basal Set " + recentRequest.rate + "U (" + recentRequest.ratePercent + "%)";
-                            recentRequest.been_set      =   true;
-                            recentRequest.aps_update    =   true;
-                            recentRequest.save();
+                        if (rejectRequest.equals("")) {
+                            //all ok
+                            localObjectState = "received";
+                            localObjectDetails = "Request sent to pump";
                         } else {
-                            recentRequest.state         =   "error";
-                            recentRequest.details       =   actionResult;
-                            recentRequest.been_set      =   false;
-                            recentRequest.rejected      =   true;
-                            recentRequest.aps_update    =   true;
-                            recentRequest.save();
+                            //reject
+                            localObjectState = "error";
+                            localObjectDetails = rejectRequest;
                         }
 
-                        break;
+                        integrationForAPS.setLocal_object_id(localObjectlID);
+                        integrationForAPS.setState(localObjectState);
+                        integrationForAPS.setDetails(localObjectDetails);
+                        realmManager.getRealm().copyToRealm(integrationForAPS);
+                        integrationForPump.setLocal_object_id(localObjectlID);
+                        integrationForPump.setState(localObjectState);
+                        integrationForPump.setDetails(localObjectDetails);
+                        realmManager.getRealm().copyToRealm(integrationForPump);
+                        realmManager.getRealm().commitTransaction();
+                    }
+                    break;
 
-                    case "cancel":
-
-                        actionResult = "canceled";                                                  // TODO: 16/01/2016 a function should be here to action the TBR and get result
-
-                        if (actionResult.equals("canceled")) {
-                            recentRequest.state         =   "canceled";
-                            recentRequest.details       =   "This Temp Basal was running and has now been Canceled";
-                            recentRequest.been_set      =   true;
-                            recentRequest.aps_update    =   true;
-                            recentRequest.save();
-                        } else {
-                            recentRequest.state         =   "error";
-                            recentRequest.details       =   actionResult;
-                            recentRequest.been_set      =   false;
-                            recentRequest.aps_update    =   true;
-                            recentRequest.rejected      =   true;
-                            recentRequest.save();
-                        }
-
-                        break;
-                }
+                default:
+                    Log.e(TAG, "handleMessage: Unknown Action: " + action);
             }
 
             connect_to_aps_app();
-            Intent intent = new Intent("UPDATE_BASAL");                                             //sends result to update UI if loaded
-            //MainApp.instance().sendBroadcast(intent);
-            sendBroadcast(intent); // TODO: 07/06/2016 this ok?
+            realmManager.closeRealm();
         }
     }
+
+
 
     final Messenger myMessenger = new Messenger(new IncomingHandler());
 
@@ -247,31 +186,56 @@ public class CommunicationService extends android.app.Service {
         return myMessenger.getBinder();
     }
 
-    public void updateAPSAppBolus(){
 
-        List<Treatment> treatments = Treatment.getToUpdateAPSApp();
-        Log.d(TAG, "UPDATE APS App: " + treatments.size() + " treatments");
+    public void updateAPSApp(){
 
-        for (Treatment bolus : treatments) {
+        RealmManager realmManager = new RealmManager();
+        List<Integration> integrations = Integration.getIntegrationsToSync("aps_app", null, realmManager.getRealm());
 
-            ObjectToSync bolusSync = new ObjectToSync(bolus,null);
+        if (integrations.size() > 0) {
+            /*
+                Bundle data...
+                "ACTION"                -   What is this incoming request? Example: "TREATMENT_UPDATES"
+                "INTEGRATION_OBJECTS"   -   Array of Integration Objects, details of the objects being synced.  *OPTIONAL for UPDATE_TREATMENTS only*
+            */
 
+            Log.d(TAG, "UPDATE APS App:" + integrations.size() + " treatments to update");
+            Log.d(TAG, "INTEGRATIONS:" + integrations.toString());
             Message msg = Message.obtain();
-            Bundle bundle = new Bundle();
-            bundle.putString("ACTION", "bolus_delivery");
-            bundle.putString("UPDATE", bolusSync.asJSONString());
-            msg.setData(bundle);
+            boolean updateOK = true;
+            try {
+                Gson gson = new GsonBuilder()
+                        .registerTypeAdapter(Class.forName("io.realm.IntegrationRealmProxy"), new IntegrationSerializer())
+                        .create();
+
+                Bundle bundle = new Bundle();
+                bundle.putString(RT2Const.commService.ACTION, RT2Const.commService.OUTGOING_TREATMENT_UPDATES);
+                bundle.putString(RT2Const.commService.INTEGRATION_OBJECTS, gson.toJson(integrations));
+                msg.setData(bundle);
+
+            } catch (ClassNotFoundException e){
+                updateOK = false;
+                Log.e(TAG, "Error creating gson object: " + e.getLocalizedMessage());
+            }
 
             try {
-                Log.d(TAG, "UPDATE APS App: INT ID " + bolusSync.aps_integration_id);
                 myService.send(msg);
+                Log.d(TAG, integrations.size() + " updates sent");
             } catch (RemoteException e) {
-                e.printStackTrace();
-                Log.d(TAG, "UPDATE APS App: Update FAILED for " + bolusSync.aps_integration_id);
-            } finally {
-                Log.d(TAG, "UPDATE APS App: Update sent for " + bolusSync.aps_integration_id);
-                bolus.aps_update = false;
-                bolus.save();
+                updateOK = false;
+                Log.e(TAG, integrations.size() + " updates failed. " + e.getLocalizedMessage());
+            }
+
+            for (Integration integration : integrations){
+                realmManager.getRealm().beginTransaction();
+                if (updateOK) {
+                    integration.setState("sent");
+                } else {
+                    integration.setState("error");
+                    integration.setDetails("Update to APS failed. Will not be resent.");
+                }
+                integration.setToSync(false);
+                realmManager.getRealm().commitTransaction();
             }
         }
 
@@ -280,41 +244,8 @@ public class CommunicationService extends android.app.Service {
         } catch (IllegalArgumentException e) {
             //catch if service was killed in a unclean way
         }
-    }
 
-    public void updateAPSAppBasal(){
-
-        List<Basal> basals = Basal.getToUpdateHAPP();
-        Log.d(TAG, "UPDATE APS App:" + basals.size() + " basals");
-
-        for (Basal basal : basals) {
-
-            ObjectToSync basalSync = new ObjectToSync(null,basal);
-
-            Message msg = Message.obtain();
-            Bundle bundle = new Bundle();
-            bundle.putString("ACTION", "temp_basal");
-            bundle.putString("UPDATE", basalSync.asJSONString());
-            msg.setData(bundle);
-
-            try {
-                Log.d(TAG, "UPDATE APS App: INT ID " + basalSync.aps_integration_id);
-                myService.send(msg);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-                Log.d(TAG, "UPDATE APS App: Update FAILED for " + basalSync.aps_integration_id);
-            } finally {
-                Log.d(TAG, "UPDATE APS App: Update sent for " + basalSync.aps_integration_id);
-                basal.aps_update = false;
-                basal.save();
-            }
-        }
-
-        try {
-            if (isBound) CommunicationService.this.unbindService(myConnection);
-        } catch (IllegalArgumentException e) {
-            //catch if service was killed in a unclean way
-        }
+        realmManager.closeRealm();
     }
 
     //Connect to the APS App Treatments Service
@@ -332,8 +263,7 @@ public class CommunicationService extends android.app.Service {
             myService = new Messenger(service);
             isBound = true;
 
-            updateAPSAppBolus();
-            updateAPSAppBasal();
+            updateAPSApp();
         }
 
         public void onServiceDisconnected(ComponentName className) {

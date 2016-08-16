@@ -36,6 +36,7 @@
     <string name="title_pump_history">Pump History</string>
     <string name="title_rileylink_scan">RileyLink Scan</string>
     <string name="title_activity_riley_link_scan">RileyLink BLE Scan</string>
+    <string name="title_treatment_history">Treatment History</string>
 
     <!-- RileyLink Scan -->
     <string name="selected_device">Selected</string>

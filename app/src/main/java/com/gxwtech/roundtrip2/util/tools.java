@@ -14,6 +14,9 @@ import com.gxwtech.roundtrip2.MainApp;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
 
 /**
  * Created by Tim on 15/06/2016.
@@ -67,6 +70,45 @@ public class tools {
         } catch (Exception e){
             //Crashlytics.logException(e);
             Log.e(TAG, "showAlertText: " + e.getLocalizedMessage());
+        }
+    }
+
+    public static Double round(Double value, int decPoints){
+        if (value == null || value.isInfinite() || value.isNaN()) return 0D;
+        DecimalFormat df;
+        DecimalFormatSymbols otherSymbols = new DecimalFormatSymbols(Locale.ENGLISH);
+        otherSymbols.setDecimalSeparator('.');
+        otherSymbols.setGroupingSeparator(',');
+
+        switch (decPoints){
+            case 1:
+                //if (precisionRounding()){
+                //    df = new DecimalFormat("##0.00", otherSymbols);
+                //} else {
+                    df = new DecimalFormat("##0.0", otherSymbols);
+                //}
+                break;
+            case 2:
+                df = new DecimalFormat("##0.00", otherSymbols);
+                break;
+            case 3:
+                df = new DecimalFormat("##0.000", otherSymbols);
+                break;
+            default:
+                df = new DecimalFormat("##0.0000", otherSymbols);
+        }
+        return Double.parseDouble(df.format(value));
+    }
+
+
+    public static String formatDisplayInsulin(Double value, int decPoints){
+        return round(value,decPoints) + "u";
+    }
+    public static String formatDisplayBasal(Double value, Boolean doubleLine){
+        if (doubleLine) {
+            return round(value, 2) + "\n" + "U/h";
+        } else {
+            return round(value, 2) + "U/h";
         }
     }
 }

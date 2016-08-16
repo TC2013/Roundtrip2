@@ -1,163 +1,97 @@
 package com.gxwtech.roundtrip2.util;
 
-import com.gxwtech.roundtrip2.CommunicationService.Objects.Basal;
-import com.gxwtech.roundtrip2.CommunicationService.Objects.ObjectToSync;
-import com.gxwtech.roundtrip2.CommunicationService.Objects.Treatment;
+import com.gxwtech.roundtrip2.CommunicationService.Objects.Bolus;
+import com.gxwtech.roundtrip2.CommunicationService.Objects.Integration;
+import com.gxwtech.roundtrip2.CommunicationService.Objects.TempBasal;
+import com.gxwtech.roundtrip2.RT2Const;
 
 import java.util.Date;
+
+import io.realm.Realm;
 
 /**
  * Created by Tim on 16/06/2016.
  * Class that provides validation and safety checks
  */
 public class Check {
-    final static int MaxTreatmentAgeInMins = 10;
     final static boolean DEBUG = true;
 
-    public static String NewObjectToSync(ObjectToSync objectToSync){
-        // New incoming object to sync, checks we are happy to accept
-        String result = "";
+    public static String isNewTempBasalSafe(TempBasal tempBasal){
+        String reply = "";
 
-        result  +=  isPumpSupported(objectToSync);
+        if (isTreatmentTooOld(tempBasal.getStart_time()))   reply += "Treatment is older than " + RT2Const.safety.TREATMENT_MAX_AGE + " mins, rejected.";
+        //is TBR supported?
+        // TODO: 21/02/2016 perform checks here, return empty string for OK or text detailing the issue
 
-        // TODO: 21/02/2016 perform other checks here, return empty string for OK or text detailing the issue
-
-        return result;
+        return reply;
     }
 
-    public static boolean IsBasalSafeToAction(Basal basal){
-        //Are we happy to Action this requested new or cancel Basal request
+    public static String isCancelTempBasalSafe(TempBasal tempBasal, Integration integrationAPS, Realm realm){
+        String reply = "";
 
-        Boolean isPumpOnline    =   true;                                                           // TODO: 16/01/2016 this should be a function to check if the pump is online
-        Boolean isPumpBusy      =   false;                                                          // TODO: 16/01/2016 this should be a function to check if the pump is busy, for example if delivering a treatment
-        if (!isPumpOnline || isPumpBusy) {                                                          //Cannot use pump right now
-            basal.state         =   "delayed";
-            basal.details       =   "Pump online: " + isPumpOnline + " | Pump busy: " + isPumpBusy;
-            basal.been_set      =   false;
-            basal.aps_update   =   true;
-            basal.save();
+        if (isTreatmentTooOld(tempBasal.getStart_time()))        reply += "Treatment is older than " + RT2Const.safety.TREATMENT_MAX_AGE + " mins, rejected. ";
+        if (!isThisBasalLastActioned(integrationAPS, realm))     reply += "Current Running Temp Basal does not match this Cancel request, Temp Basal has not been canceled. ";
+        //is TBR supported?
+        // TODO: 21/02/2016 perform checks here, return empty string for OK or text detailing the issue
 
-            return false;
-        }
-
-        switch (basal.action) {
-
-            case "new":
-
-                if (isRequestIsTooOld(basal.start_time.getTime())){
-                    basal.state         = "error";
-                    basal.details       = "NEW Basal Request is older than 10mins, too old to be set";
-                    basal.been_set      = false;
-                    basal.rejected      = true;
-                    basal.aps_update   = true;
-                    basal.save();
-
-                    return false;
-                }
-
-                // TODO: 16/06/2016 add additional checks for new basal requests
-
-                break;
-
-            case "cancel":
-
-                if (!isThisBasalLastActioned(basal)) {
-                    basal.state         =   "error";
-                    basal.details       =   "Current Running Temp Basal does not match this Cancel request, Temp Basal has not been canceled";
-                    basal.been_set      =   false;
-                    basal.aps_update   =   true;
-                    basal.rejected      =   true;
-                    basal.save();
-
-                    return false;
-                }
-
-                // TODO: 16/06/2016 add additional checks for cancel basal requests
-
-                break;
-        }
-
-        return true;                                                                                //All good to action
+        return reply;
     }
 
-    public static boolean IsBolusSafeToAction(Treatment bolus){
-        //Are we happy to Action this requested Bolus request
+    public static String isBolusSafeToAction(Bolus bolus){
+        String reply = "";
 
-        if (isRequestIsTooOld(bolus.date_requested)) {
-            bolus.state         =   "error";
-            bolus.details       =   "Treatment is older than 10mins, too old to be automated";
-            bolus.delivered     =   false;
-            bolus.rejected      =   true;
-            bolus.aps_update   =   true;
-            bolus.save();
-
-            return false;
-        }
-
-        Boolean isPumpOnline    =   true;                                                           // TODO: 16/01/2016 this should be a function to check if the pump is online
-        Boolean isPumpBusy      =   false;                                                          // TODO: 16/01/2016 this should be a function to check if the pump is busy, for example if delivering a treatment
-        if (!isPumpOnline || isPumpBusy) {                                                          //Cannot use pump right now
-            bolus.state         =   "delayed";
-            bolus.details       =   "Pump online: " + isPumpOnline + " | Pump busy: " + isPumpBusy;
-            bolus.delivered     =   false;
-            bolus.aps_update   =   true;
-            bolus.save();
-
-            return false;
-        }
-
-        if (bolus.value == 1.1 && DEBUG){
-            bolus.state         =   "error";
-            bolus.details       =   "test error as value = 1.1";
-            bolus.delivered     =   false;
-            bolus.rejected      =   true;
-            bolus.aps_update    =   true;
-            bolus.save();
-
-            return false;
-        }
-
+        if (isTreatmentTooOld(bolus.getTimestamp()))        reply += "Treatment is older than " + RT2Const.safety.TREATMENT_MAX_AGE + " mins, rejected. ";
         // TODO: 16/06/2016 add additional Bolus safety checks here
 
-        return true;                                                                                //All good to action
+        return reply;
     }
 
-    private static String isPumpSupported(ObjectToSync objectToSync){
+    public static boolean isPumpSupported(String expectedPump){
         //Do we support the pump requested?
-        if (DEBUG) return "";
+        if (DEBUG) return true;
 
-        switch (objectToSync.value4){
+        switch (expectedPump){
             case "medtronic_absolute":
             case "medtronic_percent":
-                return "";
+                return true;
             default:
-                return "Pump requested not supported, treatment rejected.";
+                return false;
         }
     }
 
-    private static boolean isRequestIsTooOld(Long date){
+    public static boolean isRequestTooOld(Long date){
         //Is this request too old to action?
         Long ageInMins = (new Date().getTime() - date) /1000/60;
-        if (ageInMins > MaxTreatmentAgeInMins){
+        if (ageInMins > RT2Const.safety.INCOMING_REQUEST_MAX_AGE){
             return true;
         } else {
             return false;
         }
     }
 
-    private static boolean isThisBasalLastActioned(Basal basal){
-        //Is this Basal the most recent one set to the pump?
-        Basal lastActive        =   Basal.lastActive();                                             //Basal that is active or last active
-
-        if (lastActive == null){
-            return false;                                                                           //We are not aware of any Basal set by this App
+    public static boolean isTreatmentTooOld(Date date){
+        //Is this treatment too old to action?
+        Long ageInMins = (new Date().getTime() - date.getTime()) /1000/60;
+        if (ageInMins > RT2Const.safety.TREATMENT_MAX_AGE){
+            return true;
+        } else {
+            return false;
         }
+    }
 
-        if (!lastActive.aps_int_id.equals(basal.aps_int_id)) {
+    private static boolean isThisBasalLastActioned(Integration integrationAPS, Realm realm){
+        //Is this Basal the most recent one set to the pump?
+        TempBasal lastActive        =   TempBasal.lastActive(realm);                                //Basal that is active or last active
+        if (lastActive == null) return false;                                                       //No basal has ever been active
+
+        Integration integration     =   Integration.getIntegration("aps_app","temp_basal",lastActive.getId(),realm);
+        if (integration == null) return false;                                                      //We are not aware of any Basal set by this App
+
+        if (integrationAPS.getRemote_id().equals(integration.getRemote_id())) {
+            return true;
+        } else {
             return false;                                                                           //Basal to cancel does not match the current active basal
         }
-
-        return true;
     }
 
 }
