@@ -14,7 +14,12 @@ public class PumpTimeStamp {
     }
     public PumpTimeStamp(String stringRepresentation) { localDateTime.parse(stringRepresentation); }
     public PumpTimeStamp(LocalDate localDate) {
-        localDateTime = new LocalDateTime(localDate);
+        try {
+            localDateTime = new LocalDateTime(localDate);
+        } catch (IllegalArgumentException e) {
+            // This should be caught earlier
+            localDateTime = new LocalDateTime(1973,1,1,1,1);
+        }
     }
     public PumpTimeStamp(LocalDateTime localDateTime) {
         this.localDateTime = localDateTime;

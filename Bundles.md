@@ -6,15 +6,15 @@ This is the top level bundle used for passing Service messages over the IPC inte
 
 (long) "com.gxwtech.roundtrip2.IPC.instantKey"
 
-> Number of milliseconds since 1970 when this message was sent from the client, in a command bundle, or when this message was received by the client, in a result bundle.
+   Number of milliseconds since 1970 when this message was sent from the client, in a command bundle, or when this message was received by the client, in a result bundle.
 
 (Bundle) "com.gxwtech.roundtrip2.IPC.bundleKey"
 
-> A CommandBundle representing the ServiceCommand and its arguments
+   A CommandBundle representing the ServiceCommand and its arguments
 
 (String) "com.gxwtech.roundtrip2.IPC.messageKey"
 
-> The "action" field of the local Intent that this message will be converted to.  This can be used to route messages to different parts of RoundtripService, but currently there is only one value "com.gxwtech.roundtrip2.IPC.MSG_ServiceCommand"
+   The "action" field of the local Intent that this message will be converted to.  This can be used to route messages to different parts of RoundtripService, but currently there is only one value "com.gxwtech.roundtrip2.IPC.MSG_ServiceCommand"
 
 > ### messageKey = "com.gxwtech.roundtrip2.IPC.MSG_ServiceCommand"
 

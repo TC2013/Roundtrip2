@@ -7,6 +7,12 @@ import android.os.Bundle;
  */
 public class RetrieveHistoryPageResult extends ServiceResult {
     public RetrieveHistoryPageResult() {}
+    public void setPageNumber(int pageNumber) {
+        map.putInt("pageNumber",pageNumber);
+    }
+    public int getPageNumber() {
+        return map.getInt("pageNumber", -1);
+    }
     public void setPageBundle(Bundle pageBundle) {
         map.putBundle("pageBundle",pageBundle);
     }

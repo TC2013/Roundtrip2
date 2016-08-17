@@ -19,4 +19,6 @@ public class ServiceMessage {
     public String getServiceMessageType() {
         return map.getString("ServiceMessageType");
     }
+
+
 }

@@ -93,11 +93,12 @@ public class ServiceClientConnection {
         Log.d(TAG,"sendPUMP_useThisDevice: " + pumpIDString);
     }
 
-    public void doTunePump(){
-        //sendIPCMessage(RT2Const.IPC.MSG_PUMP_tunePump);
+    public void doTunePump() {
+        ServiceCommand command = ServiceClientActions.makeTunePumpCommand();
+        roundtripServiceClientConnection.sendServiceCommand(command);
     }
 
-    public void getHistory(){
+    public void getHistory() {
         //sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchHistory);
     }
 
@@ -115,8 +116,25 @@ public class ServiceClientConnection {
         roundtripServiceClientConnection.sendServiceCommand(command);
     }
 
-    public void readISFProfile(){
+    public void readISFProfile() {
         ServiceCommand getISFProfileCommand = ServiceClientActions.makeReadISFProfileCommand();
         roundtripServiceClientConnection.sendServiceCommand(getISFProfileCommand);
     }
+
+    public void updateAllStatus() {
+        ServiceCommand command = ServiceClientActions.makeUpdateAllStatusCommand();
+        roundtripServiceClientConnection.sendServiceCommand(command);
+    }
+
+    public void doFetchPumpHistory() {
+        ServiceCommand retrievePageCommand = ServiceClientActions.makeFetchPumpHistoryCommand();
+        roundtripServiceClientConnection.sendServiceCommand(retrievePageCommand);
+    }
+
+    public void doFetchSavedHistory() {
+        // Does not (at the moment) fetch saved history :(
+        ServiceCommand cmd = ServiceClientActions.makeFetchPumpHistoryCommand();
+        roundtripServiceClientConnection.sendServiceCommand(cmd);
+    }
+
 }

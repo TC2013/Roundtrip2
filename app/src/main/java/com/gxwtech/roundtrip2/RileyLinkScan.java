@@ -1,16 +1,22 @@
 package com.gxwtech.roundtrip2;
 
+import android.Manifest;
+import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanFilter;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -40,8 +46,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 
-public class RileyLinkScan extends AppCompatActivity{
-
+public class RileyLinkScan extends AppCompatActivity {
     private final static String TAG = "RileyLinkScan";
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothLeScanner mLEScanner;
@@ -55,6 +60,8 @@ public class RileyLinkScan extends AppCompatActivity{
     public Toolbar toolbarBTScan;
     public Context mContext = this;
 
+    private static final int PERMISSION_REQUEST_COARSE_LOCATION = 30241; // arbitrary.
+    private static final int REQUEST_ENABLE_BT = 30242; // arbitrary
     // Stops scanning after 10 seconds.
     private static final long SCAN_PERIOD = 10000;
 
@@ -133,11 +140,19 @@ public class RileyLinkScan extends AppCompatActivity{
     }
 
     public void startScanBLE(){
-        // Use this check to determine whether BLE is supported on the device. Then
-        // you can selectively disable BLE-related features.
+        // https://developer.android.com/training/permissions/requesting.html
+        // http://developer.radiusnetworks.com/2015/09/29/is-your-beacon-app-ready-for-android-6.html
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
             Toast.makeText(this, "R.string.ble_not_supported", Toast.LENGTH_SHORT).show();
         } else {
+            // Use this check to determine whether BLE is supported on the device. Then
+            // you can selectively disable BLE-related features.
+            if (ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED) {
+                //your code that requires permission
+                ActivityCompat.requestPermissions(this, new String[] { Manifest.permission.ACCESS_COARSE_LOCATION },
+                        PERMISSION_REQUEST_COARSE_LOCATION);
+            }
 
             // Ensures Bluetooth is available on the device and it is enabled. If not,
             // displays a dialog requesting user permission to enable Bluetooth.
@@ -145,8 +160,13 @@ public class RileyLinkScan extends AppCompatActivity{
                 Toast.makeText(this, "R.string.ble_not_enabled", Toast.LENGTH_SHORT).show();
             } else {
 
-                // Will request that GPS be enabled for devices running Marshmallow or newer.
-                LocationHelper.requestLocationForBluetooth(this);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    // Will request that GPS be enabled for devices running Marshmallow or newer.
+                    LocationHelper.requestLocationForBluetooth(this);
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                    startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+                }
 
                 mLEScanner = mBluetoothAdapter.getBluetoothLeScanner();
                 settings = new ScanSettings.Builder()
@@ -157,6 +177,19 @@ public class RileyLinkScan extends AppCompatActivity{
                 scanLeDevice(true);
             }
         }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_ENABLE_BT) {
+            if (resultCode == RESULT_OK) {
+                // User allowed Bluetooth to turn on
+            } else if (resultCode == RESULT_CANCELED) {
+                // Error, or user said "NO"
+                finish();
+            }
+       }
     }
 
     private void scanLeDevice(final boolean enable) {

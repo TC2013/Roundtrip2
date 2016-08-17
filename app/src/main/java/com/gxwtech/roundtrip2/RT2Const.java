@@ -46,7 +46,7 @@ public class RT2Const {
 
         // These are used to pass information about the pump from the service to the GUI.
         // has a 'model' field
-        public static final String MSG_PUMP_reportedPumpModel = Prefix + "MSG_PUMP_reportedPumpModel";
+        //public static final String MSG_PUMP_reportedPumpModel = Prefix + "MSG_PUMP_reportedPumpModel";
         public static final String MSG_PUMP_pumpFound = Prefix + "MSG_PUMP_pumpFound";
         public static final String MSG_PUMP_pumpLost = Prefix + "MSG_PUMP_pumpLost";
 
@@ -67,6 +67,7 @@ public class RT2Const {
         public static final String MSG_note_Idle = Prefix + "MSG_note_Idle";
         public static final String MSG_note_FindingRileyLink = Prefix + "MSG_note_FindingRileyLink";
         public static final String MSG_note_WakingPump = Prefix + "MSG_note_WakingPump";
+        public static final String MSG_note_TaskProgress = Prefix + "MSG_note_TaskProgress";
 
     }
     public class local {
@@ -105,6 +106,30 @@ public class RT2Const {
         // This is sent from the PumpManager to RoundtripService at the completion of a pump command session.
         public static final String INTENT_sessionCompleted = Prefix + "INTENT_sessionCompleted";
 
+    }
+
+    public class commService {
+        //Data
+        public static final String ACTION                       =   "ACTION";
+        public static final String DATE_REQUESTED               =   "DATE_REQUESTED";
+        public static final String INTEGRATION_OBJECTS          =   "INTEGRATION_OBJECTS";
+        public static final String TREATMENT_OBJECTS            =   "TREATMENT_OBJECTS";
+        public static final String PUMP                         =   "PUMP";
+        public static final String REMOTE_APP_NAME              =   "REMOTE_APP_NAME";
+
+        //Incoming actions
+        public static final String INCOMING_NEW_TREATMENTS      =   "NEW_TREATMENTS";
+        public static final String INCOMING_TEST_MSG            =   "TEST_MSG";
+
+        //Outgoing actions
+        public static final String OUTGOING_TREATMENT_UPDATES   =   "TREATMENT_UPDATES";
+        public static final String OUTGOING_TEST_MSG            =   "TEST_MSG";
+
+    }
+
+    public class safety {
+        public static final int INCOMING_REQUEST_MAX_AGE    =   10; //mins
+        public static final int TREATMENT_MAX_AGE           =   8; //mins
 
     }
 }

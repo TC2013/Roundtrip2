@@ -54,8 +54,9 @@ public class ReadPumpClockResult extends ServiceResult {
         return "";
     }
 
+    // This can be overridden by subclasses -- essentially it allows
+    // casting from the base class to the subclass.
     public void initFromServiceResult(ServiceResult serviceResult) {
         setMap(serviceResult.getMap());
     }
-
 }

@@ -32,6 +32,18 @@ public class RFSpyReader {
         this.rileyLinkBle = rileyLinkBle;
     }
 
+    public void init(Context context, RileyLinkBLE rileyLinkBLE) {
+        this.context = context;
+        this.rileyLinkBle = rileyLinkBLE;
+    }
+
+    public void setRileyLinkBle(RileyLinkBLE rileyLinkBle) {
+        if (readerTask != null) {
+            readerTask.cancel(true);
+        }
+        this.rileyLinkBle = rileyLinkBle;
+    }
+
     // This timeout must be coordinated with the length of the RFSpy radio operation or Bad Things Happen.
     public byte[] poll(int timeout_ms) {
         Log.v(TAG, ThreadUtil.sig()+"Entering poll at t=="+SystemClock.uptimeMillis()+", timeout is "+timeout_ms+" mDataQueue size is "+mDataQueue.size());

@@ -22,9 +22,18 @@ public class ServiceResult extends ServiceMessage {
     public void init() {
         super.init();
         map.putString("ServiceMessageType","ServiceResult");
-        map.putString("ServiceResultType",this.getClass().getSimpleName());
+        setServiceResultType(this.getClass().getSimpleName());
         setResultError(0,"Uninitialized ServiceResult");
     }
+
+    public void setServiceResultType(String serviceResultType) {
+        map.putString("ServiceResultType",serviceResultType);
+    }
+
+    public String getServiceResultType() {
+        return map.getString("ServiceResultType","ServiceResult");
+    }
+
     public void setResultOK() {
         map.putString("result","OK");
     }
@@ -62,4 +71,6 @@ public class ServiceResult extends ServiceMessage {
     public String getResult() {
         return map.getString("result","");
     }
+
+
 }

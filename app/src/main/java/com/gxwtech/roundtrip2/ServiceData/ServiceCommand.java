@@ -41,10 +41,17 @@ public class ServiceCommand extends ServiceMessage {
     }
 
     public boolean isPumpCommand() {
-        String commandName = getCommandName();
-        if ("ReadPumpClock".equals(commandName)) return true;
-        if ("RetrieveHistoryPage".equals(commandName)) return true;
-        if ("ReadISFProfile".equals(commandName)) return true;
-        return false;
+        switch (getCommandName()) {
+            case "FetchPumpHistory":
+            case "ReadPumpClock":
+            case "RetrieveHistoryPage":
+            case "ReadISFProfile":
+            case "ReadBolusWizardCarbProfile":
+            case "UpdatePumpStatus":
+            case "WakeAndTune":
+                return true;
+            default:
+                return false;
+        }
     }
 }

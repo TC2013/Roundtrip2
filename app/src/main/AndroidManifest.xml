@@ -52,6 +52,15 @@
                 <action android:name="com.gxwtech.roundtrip2.DeviceScanActivity" />
             </intent-filter>
         </service>
+        <service
+            android:name=".CommunicationService.CommunicationService"
+            android:enabled="true"
+            android:exported="true"
+            android:process=":CommunicationService">
+            <intent-filter>
+                <action android:name="com.gxwtech.roundtrip2.CommunicationService.CommunicationService"></action>
+            </intent-filter>
+        </service>
 
         <activity
             android:name=".HistoryActivity.HistoryPageListActivity"
@@ -72,37 +81,6 @@
                 android:value=".HistoryActivity.HistoryPageListActivity" />
         </activity>
         <activity
-            android:name=".LogActivity.ServiceMessageListActivity"
-            android:label="@string/title_logentry_list"
-            android:parentActivityName=".MainActivity"
-            android:theme="@style/AppTheme.NoActionBar">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.gxwtech.roundtrip2.MainActivity" />
-        </activity>
-        <activity
-            android:name=".LogActivity.LogEntryDetailActivity"
-            android:label="@string/title_logentry_detail"
-            android:parentActivityName=".LogActivity.ServiceMessageListActivity"
-            android:theme="@style/AppTheme.NoActionBar">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".LogActivity.ServiceMessageListActivity" />
-        </activity>
-        <activity
-            android:name=".ItemListActivity"
-            android:label="@string/title_item_list"
-            android:theme="@style/AppTheme.NoActionBar" />
-        <activity
-            android:name=".ItemDetailActivity"
-            android:label="@string/title_item_detail"
-            android:parentActivityName=".ItemListActivity"
-            android:theme="@style/AppTheme.NoActionBar">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.gxwtech.roundtrip2.ItemListActivity" />
-        </activity>
-        <activity
             android:name=".ServiceMessageViewActivity.ServiceMessageViewListActivity"
             android:label="@string/title_servicemessageview_list"
             android:theme="@style/AppTheme.NoActionBar" />
@@ -115,6 +93,15 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".ServiceMessageViewActivity.ServiceMessageViewListActivity" />
         </activity>
+        <activity
+            android:name=".TreatmentHistory"
+            android:label="@string/title_treatment_history"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.gxwtech.roundtrip2.MainActivity" />
+        </activity>
+
         <activity
             android:name=".SettingsActivity"
             android:label="@string/title_activity_settings" />

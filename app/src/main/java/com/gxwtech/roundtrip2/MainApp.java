@@ -2,6 +2,9 @@ package com.gxwtech.roundtrip2;
 
 import android.app.Application;
 
+import io.realm.Realm;
+import io.realm.RealmConfiguration;
+
 /**
  * Created by Tim on 15/06/2016.
  */
@@ -17,12 +20,13 @@ public class MainApp extends Application {
         sInstance = this;
         serviceClientConnection = new ServiceClientConnection();
 
-        // TODO: 09/07/2016 @TIM are we going to use ActiveAndroid?
-        //Manually initialize ActiveAndroid
-        // TODO: 05/11/2015 appears to be a bug in Active Android where DB version is ignored in Manifest, must be added here as well
-        // http://stackoverflow.com/questions/33164456/update-existing-database-table-with-new-column-not-working-in-active-android
-        //Configuration configuration = new Configuration.Builder(this).setDatabaseVersion(1).create();
-        //ActiveAndroid.initialize(configuration); //// TODO: 06/01/2016 change to this?
+        //initialize Realm
+        RealmConfiguration realmConfiguration = new RealmConfiguration.Builder(instance())
+                .name("rt2.realm")
+                .schemaVersion(0)
+                .deleteRealmIfMigrationNeeded() // TODO: 03/08/2016 @TIM remove
+                .build();
+        Realm.setDefaultConfiguration(realmConfiguration);
     }
 
 

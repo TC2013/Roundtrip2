@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.SystemClock;
 import android.util.Log;
 
+import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.BLECommOperations.BLECommOperation;
 import com.gxwtech.roundtrip2.RoundtripService.RileyLinkBLE.BLECommOperations.BLECommOperationResult;
 import com.gxwtech.roundtrip2.util.ByteUtil;
 import com.gxwtech.roundtrip2.util.StringUtil;
@@ -101,7 +102,11 @@ public class RFSpy {
 
         // prepend length, and send it.
         byte[] prepended = ByteUtil.concat(new byte[] {(byte)(bytes.length)},bytes);
-        rileyLinkBle.writeCharacteristic_blocking(radioServiceUUID,radioDataUUID,prepended);
+        BLECommOperationResult writeCheck = rileyLinkBle.writeCharacteristic_blocking(radioServiceUUID,radioDataUUID,prepended);
+        if (writeCheck.resultCode != BLECommOperationResult.RESULT_SUCCESS) {
+            Log.e(TAG,"BLE Write operation failed, code=" + writeCheck.resultCode);
+            return new RFSpyResponse(); // will be a null (invalid) response
+        }
         SystemClock.sleep(100);
         //Log.i(TAG,ThreadUtil.sig()+String.format(" writeToData:(timeout %d) %s",(responseTimeout_ms),ByteUtil.shortHexString(prepended)));
         byte[] rawResponse = reader.poll(responseTimeout_ms);
@@ -167,6 +172,7 @@ public class RFSpy {
     }
 
     public RFSpyResponse transmitThenReceive(RadioPacket pkt, byte sendChannel, byte repeatCount, byte delay_ms, byte listenChannel, int timeout_ms, byte retryCount) {
+
         int sendDelay = repeatCount * delay_ms;
         int receiveDelay = timeout_ms * (retryCount + 1);
         byte[] sendAndListen = {RFSPY_SEND_AND_LISTEN,sendChannel,repeatCount,delay_ms,listenChannel,

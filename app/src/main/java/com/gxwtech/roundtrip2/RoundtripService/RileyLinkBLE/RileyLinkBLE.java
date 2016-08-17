@@ -244,6 +244,9 @@ public class RileyLinkBLE {
     }
 
     public void findRileyLink(String RileyLinkAddress) {
+        Log.d(TAG,"Rileylink address: " + RileyLinkAddress);
+        // Must verify that this is a valid MAC, or crash.
+
         rileyLinkDevice = bluetoothAdapter.getRemoteDevice(RileyLinkAddress);
         // if this succeeds, we get a connection state change callback?
         connectGatt();
@@ -276,71 +279,115 @@ public class RileyLinkBLE {
 
     public BLECommOperationResult setNotification_blocking(UUID serviceUUID, UUID charaUUID) {
         BLECommOperationResult rval = new BLECommOperationResult();
-        try {
-            gattOperationSema.acquire();
-            SystemClock.sleep(1); // attempting to yield thread, to make sequence of events easier to follow
-        } catch (InterruptedException e) {
-            Log.e(TAG,"setNotification_blocking: interrupted waiting for gattOperationSema");
-            return rval;
-        }
-        if (mCurrentOperation != null) {
-            rval.resultCode = BLECommOperationResult.RESULT_BUSY;
-        } else {
-            if (bluetoothConnectionGatt.getService(serviceUUID) == null) {
-                // Catch if the service is not supported by the BLE device
-                rval.resultCode = BLECommOperationResult.RESULT_NONE;
-                Log.e(TAG, "BT Device not supported");
-                // TODO: 11/07/2016 UI update for user
+        if (bluetoothConnectionGatt != null) {
+
+            try {
+                gattOperationSema.acquire();
+                SystemClock.sleep(1); // attempting to yield thread, to make sequence of events easier to follow
+            } catch (InterruptedException e) {
+                Log.e(TAG, "setNotification_blocking: interrupted waiting for gattOperationSema");
+                return rval;
+            }
+            if (mCurrentOperation != null) {
+                rval.resultCode = BLECommOperationResult.RESULT_BUSY;
             } else {
-                BluetoothGattCharacteristic chara = bluetoothConnectionGatt.getService(serviceUUID).getCharacteristic(charaUUID);
-                // Tell Android that we want the notifications
-                bluetoothConnectionGatt.setCharacteristicNotification(chara, true);
-                List<BluetoothGattDescriptor> list = chara.getDescriptors();
-                if (gattDebugEnabled) {
-                    for (int i = 0; i < list.size(); i++) {
-                        Log.d(TAG, "Found descriptor: " + list.get(i).toString());
+                if (bluetoothConnectionGatt.getService(serviceUUID) == null) {
+                    // Catch if the service is not supported by the BLE device
+                    rval.resultCode = BLECommOperationResult.RESULT_NONE;
+                    Log.e(TAG, "BT Device not supported");
+                    // TODO: 11/07/2016 UI update for user
+                } else {
+                    BluetoothGattCharacteristic chara = bluetoothConnectionGatt.getService(serviceUUID).getCharacteristic(charaUUID);
+                    // Tell Android that we want the notifications
+                    bluetoothConnectionGatt.setCharacteristicNotification(chara, true);
+                    List<BluetoothGattDescriptor> list = chara.getDescriptors();
+                    if (gattDebugEnabled) {
+                        for (int i = 0; i < list.size(); i++) {
+                            Log.d(TAG, "Found descriptor: " + list.get(i).toString());
+                        }
+                    }
+                    BluetoothGattDescriptor descr = list.get(0);
+                    // Tell the remote device to send the notifications
+                    mCurrentOperation = new DescriptorWriteOperation(bluetoothConnectionGatt, descr, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                    mCurrentOperation.execute(this);
+                    if (mCurrentOperation.timedOut) {
+                        rval.resultCode = BLECommOperationResult.RESULT_TIMEOUT;
+                    } else if (mCurrentOperation.interrupted) {
+                        rval.resultCode = BLECommOperationResult.RESULT_INTERRUPTED;
+                    } else {
+                        rval.resultCode = BLECommOperationResult.RESULT_SUCCESS;
                     }
                 }
-                BluetoothGattDescriptor descr = list.get(0);
-                // Tell the remote device to send the notifications
-                mCurrentOperation = new DescriptorWriteOperation(bluetoothConnectionGatt, descr, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                mCurrentOperation.execute(this);
-                if (mCurrentOperation.timedOut) {
-                    rval.resultCode = BLECommOperationResult.RESULT_TIMEOUT;
-                } else if (mCurrentOperation.interrupted) {
-                    rval.resultCode = BLECommOperationResult.RESULT_INTERRUPTED;
-                } else {
-                    rval.resultCode = BLECommOperationResult.RESULT_SUCCESS;
-                }
+                mCurrentOperation = null;
+                gattOperationSema.release();
             }
+        } else {
+            Log.e(TAG,"setNotification_blocking: not configured!");
+            rval.resultCode = BLECommOperationResult.RESULT_NOT_CONFIGURED;
         }
-        mCurrentOperation = null;
-        gattOperationSema.release();
         return rval;
     }
 
     // call from main
     public BLECommOperationResult writeCharacteristic_blocking(UUID serviceUUID, UUID charaUUID, byte[] value) {
         BLECommOperationResult rval = new BLECommOperationResult();
-        rval.value = value;
-        try {
-            gattOperationSema.acquire();
-            SystemClock.sleep(1); // attempting to yield thread, to make sequence of events easier to follow
-        } catch (InterruptedException e) {
-            Log.e(TAG,"writeCharacteristic_blocking: interrupted waiting for gattOperationSema");
-            return rval;
-        }
-        if (mCurrentOperation != null) {
-            rval.resultCode = BLECommOperationResult.RESULT_BUSY;
+        if (bluetoothConnectionGatt != null) {
+            rval.value = value;
+            try {
+                gattOperationSema.acquire();
+                SystemClock.sleep(1); // attempting to yield thread, to make sequence of events easier to follow
+            } catch (InterruptedException e) {
+                Log.e(TAG,"writeCharacteristic_blocking: interrupted waiting for gattOperationSema");
+                return rval;
+            }
+            if (mCurrentOperation != null) {
+                rval.resultCode = BLECommOperationResult.RESULT_BUSY;
+            } else {
+                if (bluetoothConnectionGatt.getService(serviceUUID) == null) {
+                    // Catch if the service is not supported by the BLE device
+                    // GGW: Tue Jul 12 01:14:01 UTC 2016:  This can also happen if the
+                    // app that created the bluetoothConnectionGatt has been destroyed/created,
+                    // e.g. when the user switches from portrait to landscape.
+                    rval.resultCode = BLECommOperationResult.RESULT_NONE;
+                    Log.e(TAG, "BT Device not supported");
+                    // TODO: 11/07/2016 UI update for user
+                } else {
+                    BluetoothGattCharacteristic chara = bluetoothConnectionGatt.getService(serviceUUID).getCharacteristic(charaUUID);
+                    mCurrentOperation = new CharacteristicWriteOperation(bluetoothConnectionGatt, chara, value);
+                    mCurrentOperation.execute(this);
+                    if (mCurrentOperation.timedOut) {
+                        rval.resultCode = BLECommOperationResult.RESULT_TIMEOUT;
+                    } else if (mCurrentOperation.interrupted) {
+                        rval.resultCode = BLECommOperationResult.RESULT_INTERRUPTED;
+                    } else {
+                        rval.resultCode = BLECommOperationResult.RESULT_SUCCESS;
+                    }
+                }
+                mCurrentOperation = null;
+                gattOperationSema.release();
+            }
         } else {
-            if (bluetoothConnectionGatt.getService(serviceUUID) == null) {
-                // Catch if the service is not supported by the BLE device
-                rval.resultCode = BLECommOperationResult.RESULT_NONE;
-                Log.e(TAG, "BT Device not supported");
-                // TODO: 11/07/2016 UI update for user
+            Log.e(TAG,"writeCharacteristic_blocking: not configured!");
+            rval.resultCode = BLECommOperationResult.RESULT_NOT_CONFIGURED;
+        }
+        return rval;
+    }
+
+    public BLECommOperationResult readCharacteristic_blocking(UUID serviceUUID, UUID charaUUID) {
+        BLECommOperationResult rval = new BLECommOperationResult();
+        if (bluetoothConnectionGatt != null) {
+            try {
+                gattOperationSema.acquire();
+                SystemClock.sleep(1); // attempting to yield thread, to make sequence of events easier to follow
+            } catch (InterruptedException e) {
+                Log.e(TAG, "readCharacteristic_blocking: Interrupted waiting for gattOperationSema");
+                return rval;
+            }
+            if (mCurrentOperation != null) {
+                rval.resultCode = BLECommOperationResult.RESULT_BUSY;
             } else {
                 BluetoothGattCharacteristic chara = bluetoothConnectionGatt.getService(serviceUUID).getCharacteristic(charaUUID);
-                mCurrentOperation = new CharacteristicWriteOperation(bluetoothConnectionGatt, chara, value);
+                mCurrentOperation = new CharacteristicReadOperation(bluetoothConnectionGatt, chara);
                 mCurrentOperation.execute(this);
                 if (mCurrentOperation.timedOut) {
                     rval.resultCode = BLECommOperationResult.RESULT_TIMEOUT;
@@ -348,40 +395,15 @@ public class RileyLinkBLE {
                     rval.resultCode = BLECommOperationResult.RESULT_INTERRUPTED;
                 } else {
                     rval.resultCode = BLECommOperationResult.RESULT_SUCCESS;
+                    rval.value = mCurrentOperation.getValue();
                 }
             }
-        }
-        mCurrentOperation = null;
-        gattOperationSema.release();
-        return rval;
-    }
-
-    public BLECommOperationResult readCharacteristic_blocking(UUID serviceUUID, UUID charaUUID) {
-        BLECommOperationResult rval = new BLECommOperationResult();
-        try {
-            gattOperationSema.acquire();
-            SystemClock.sleep(1); // attempting to yield thread, to make sequence of events easier to follow
-        } catch (InterruptedException e) {
-            Log.e(TAG,"readCharacteristic_blocking: Interrupted waiting for gattOperationSema");
-            return rval;
-        }
-        if (mCurrentOperation != null) {
-            rval.resultCode = BLECommOperationResult.RESULT_BUSY;
+            mCurrentOperation = null;
+            gattOperationSema.release();
         } else {
-            BluetoothGattCharacteristic chara = bluetoothConnectionGatt.getService(serviceUUID).getCharacteristic(charaUUID);
-            mCurrentOperation = new CharacteristicReadOperation(bluetoothConnectionGatt, chara);
-            mCurrentOperation.execute(this);
-            if (mCurrentOperation.timedOut) {
-                rval.resultCode = BLECommOperationResult.RESULT_TIMEOUT;
-            } else if (mCurrentOperation.interrupted) {
-                rval.resultCode = BLECommOperationResult.RESULT_INTERRUPTED;
-            } else {
-                rval.resultCode = BLECommOperationResult.RESULT_SUCCESS;
-                rval.value = mCurrentOperation.getValue();
-            }
+            Log.e(TAG,"readCharacteristic_blocking: not configured!");
+            rval.resultCode = BLECommOperationResult.RESULT_NOT_CONFIGURED;
         }
-        mCurrentOperation = null;
-        gattOperationSema.release();
         return rval;
     }
 

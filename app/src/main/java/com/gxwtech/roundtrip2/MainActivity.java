@@ -47,6 +47,10 @@ import android.widget.ListView;
 
 
 import com.gxwtech.roundtrip2.RoundtripService.RoundtripService;
+import com.gxwtech.roundtrip2.ServiceData.BasalProfile;
+import com.gxwtech.roundtrip2.ServiceData.BolusWizardCarbProfile;
+import com.gxwtech.roundtrip2.ServiceData.ISFProfile;
+import com.gxwtech.roundtrip2.ServiceData.PumpModelResult;
 import com.gxwtech.roundtrip2.ServiceData.ReadPumpClockResult;
 import com.gxwtech.roundtrip2.ServiceData.ServiceClientActions;
 import com.gxwtech.roundtrip2.ServiceData.ServiceCommand;
@@ -77,6 +81,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.w(TAG,"onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -162,23 +167,6 @@ public class MainActivity extends AppCompatActivity {
                         case RT2Const.local.INTENT_NEW_pumpIDKey:
                             MainApp.getServiceClientConnection().sendPUMP_useThisDevice(prefs.getString(RT2Const.serviceLocal.pumpIDKey, ""));
                             break;
-                        case RT2Const.IPC.MSG_BLE_requestAccess:
-                            /// TODO: 11/07/2016 @GEOFF cannot see this in your code anymore, do we need it?
-                            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-                            break;
-                        case RT2Const.IPC.MSG_PUMP_reportedPumpModel:
-                            //// TODO: 11/07/2016 @GEOFF cannot see this in your code anymore, should it be moved to MSG_ServiceResult?
-                            //Bundle bundle = receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey);
-                            //String modelString = bundle.getString("model", "(unknown)");
-                            //setPumpStatusMessage(modelString);
-                            break;
-                        case RT2Const.IPC.MSG_PUMP_history:
-                            Intent launchHistoryViewIntent = new Intent(context, HistoryPageListActivity.class);
-                            storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
-                            startActivity(new Intent(context, HistoryPageListActivity.class));
-                            // wait for history viwere to announce "ready"
-                            break;
                         case RT2Const.local.INTENT_historyPageViewerReady:
                             Intent sendHistoryIntent = new Intent(RT2Const.local.INTENT_historyPageBundleIncoming);
                             sendHistoryIntent.putExtra(RT2Const.IPC.MSG_PUMP_history_key, storeForHistoryViewer);
@@ -190,13 +178,58 @@ public class MainActivity extends AppCompatActivity {
                             Bundle bundle = receivedIntent.getBundleExtra(RT2Const.IPC.bundleKey);
                             transport = new ServiceTransport(bundle);
                             if (transport.commandDidCompleteOK()) {
-                                if ("ReadPumpClock".equals(transport.getOriginalCommandName())) {
-                                    ReadPumpClockResult clockResult = new ReadPumpClockResult();
-                                    clockResult.initFromServiceResult(transport.getServiceResult());
-                                    TextView pumpTimeTextView = (TextView) findViewById(R.id.textViewPumpClockTime);
-                                    pumpTimeTextView.setText(clockResult.getTimeString());
-                                } else {
-                                    Log.e(TAG,"Dunno what to do with this command completion: " + transport.getOriginalCommandName());
+                                String originalCommandName = transport.getOriginalCommandName();
+                                switch (originalCommandName) {
+                                    case "ReadPumpModel":
+                                        PumpModelResult modelResult = new PumpModelResult();
+                                        modelResult.initFromServiceResult(transport.getServiceResult());
+                                        String pumpModelString = modelResult.getPumpModel();
+                                        // GGW Tue Jul 12 02:29:54 UTC 2016: ok, now what do we do with the pump model?
+                                        showIdle();
+                                        break;
+                                    case "ReadPumpClock":
+                                        ReadPumpClockResult clockResult = new ReadPumpClockResult();
+                                        clockResult.initFromServiceResult(transport.getServiceResult());
+                                        TextView pumpTimeTextView = (TextView) findViewById(R.id.textViewPumpClockTime);
+                                        pumpTimeTextView.setText(clockResult.getTimeString());
+                                        showIdle();
+                                        break;
+                                    case "FetchPumpHistory":
+                                        storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
+                                        startActivity(new Intent(context, HistoryPageListActivity.class));
+                                        // wait for history viewer to announce "ready"
+                                        showIdle();
+                                        break;
+                                    case "RetrieveHistoryPage":
+                                        storeForHistoryViewer = receivedIntent.getExtras().getBundle(RT2Const.IPC.bundleKey);
+                                        startActivity(new Intent(context, HistoryPageListActivity.class));
+                                        // wait for history viewer to announce "ready"
+                                        showIdle();
+                                        break;
+                                    case "ISFProfile":
+                                        ISFProfile isfProfile = new ISFProfile();
+                                        isfProfile.initFromServiceResult(transport.getServiceResult());
+                                        // TODO: do something with isfProfile
+                                        showIdle();
+                                        break;
+                                    case "BasalProfile":
+                                        BasalProfile basalProfile = new BasalProfile();
+                                        basalProfile.initFromServiceResult(transport.getServiceResult());
+                                        // TODO: do something with basal profile
+                                        showIdle();
+                                        break;
+                                    case "BolusWizardCarbProfile":
+                                        BolusWizardCarbProfile carbProfile = new BolusWizardCarbProfile();
+                                        carbProfile.initFromServiceResult(transport.getServiceResult());
+                                        // TODO: do something with carb profile
+                                        showIdle();
+                                        break;
+                                    case "UpdatePumpStatus":
+                                        // rebroadcast for HAPP
+
+                                        break;
+                                    default:
+                                        Log.e(TAG, "Dunno what to do with this command completion: " + transport.getOriginalCommandName());
                                 }
                             } else {
                                 Log.e(TAG,"Command failed? " + transport.getOriginalCommandName());
@@ -243,8 +276,12 @@ public class MainActivity extends AppCompatActivity {
         intentFilter.addAction(RT2Const.local.INTENT_historyPageViewerReady);
 
 
+        linearProgressBar = (ProgressBar)findViewById(R.id.progressBarCommandActivity);
+        spinnyProgressBar = (ProgressBar)findViewById(R.id.progressBarSpinny);
         LocalBroadcastManager.getInstance(MainApp.instance()).registerReceiver(mBroadcastReceiver, intentFilter);
     }
+
+
 
 
 
@@ -261,6 +298,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar linearProgressBar;
     private ProgressBar spinnyProgressBar;
     private static final int spinnyFPS = 10;
+    private Thread spinnyThread;
     void showBusy(String activityString, int progress) {
         mProgress = progress;
         TextView tv = (TextView)findViewById(R.id.textViewActivity);
@@ -268,16 +306,20 @@ public class MainActivity extends AppCompatActivity {
         linearProgressBar.setProgress(progress);
         if (progress > 0) {
             spinnyProgressBar.setVisibility(View.VISIBLE);
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    while ((mProgress > 0) && (mProgress < 100)) {
-                        mSpinnyProgress += 100 / spinnyFPS;
-                        spinnyProgressBar.setProgress(mSpinnyProgress);
-                        SystemClock.sleep(1000/spinnyFPS);
+            if (spinnyThread == null) {
+                spinnyThread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        while ((mProgress > 0) && (mProgress < 100)) {
+                            mSpinnyProgress += 100 / spinnyFPS;
+                            spinnyProgressBar.setProgress(mSpinnyProgress);
+                            SystemClock.sleep(1000 / spinnyFPS);
+                        }
+                        spinnyThread = null;
                     }
-                }
-            }).start();
+                });
+                spinnyThread.start();
+            }
         } else {
             spinnyProgressBar.setVisibility(View.INVISIBLE);
         }
@@ -298,15 +340,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onTunePumpButtonClicked(View view) {
-        //sendIPCMessage(RT2Const.IPC.MSG_PUMP_tunePump);
+        MainApp.getServiceClientConnection().doTunePump();
     }
 
     public void onFetchHistoryButtonClicked(View view) {
-        //sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchHistory);
+        /* does not work. Crashes sig 11 */
+        showBusy("Fetch history page 0",50);
+        MainApp.getServiceClientConnection().doFetchPumpHistory();
     }
 
     public void onFetchSavedHistoryButtonClicked(View view) {
-        //sendIPCMessage(RT2Const.IPC.MSG_PUMP_fetchSavedHistory);
+        showBusy("Fetching history (not saved)",50);
+        MainApp.getServiceClientConnection().doFetchSavedHistory();
     }
 
     public void onReadPumpClockButtonClicked(View view) {
@@ -322,6 +367,15 @@ public class MainActivity extends AppCompatActivity {
 
     public void onViewEventLogButtonClicked(View view) {
         startActivity(new Intent(getApplicationContext(),ServiceMessageViewListActivity.class));
+    }
+
+    public void onUpdateAllStatusButtonClicked(View view) {
+        MainApp.getServiceClientConnection().updateAllStatus();
+    }
+
+    public void onGetCarbProfileButtonClicked(View view) {
+        showBusy("Getting Carb Profile",1);
+        roundtripServiceClientConnection.sendServiceCommand(ServiceClientActions.makeReadBolusWizardCarbProfileCommand());
     }
 
     /* UI Setup */
@@ -397,8 +451,7 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case 2:
                         //Treatment Logs
-                        // TODO: 09/07/2016 @TIM add treatment history activity once we know if we will be using Active Android or not
-                        //startActivity(new Intent(getApplicationContext(), TreatmentHistory.class));
+                        startActivity(new Intent(getApplicationContext(), TreatmentHistory.class));
                         break;
                     case 3:
                         //Settings
@@ -469,8 +522,8 @@ public class MainActivity extends AppCompatActivity {
 
                 Message msg = Message.obtain();
                 Bundle bundle = new Bundle();
-                bundle.putString("ACTION","TEST_MSG");
-                bundle.putString("UPDATE", txt.toString());
+                bundle.putString(RT2Const.commService.ACTION,RT2Const.commService.OUTGOING_TEST_MSG);
+                bundle.putString(RT2Const.commService.REMOTE_APP_NAME, txt.toString());
                 msg.setData(bundle);
 
                 try {
