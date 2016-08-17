@@ -451,8 +451,7 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case 2:
                         //Treatment Logs
-                        // TODO: 09/07/2016 @TIM add treatment history activity once we know if we will be using Active Android or not
-                        //startActivity(new Intent(getApplicationContext(), TreatmentHistory.class));
+                        startActivity(new Intent(getApplicationContext(), TreatmentHistory.class));
                         break;
                     case 3:
                         //Settings
@@ -523,8 +522,8 @@ public class MainActivity extends AppCompatActivity {
 
                 Message msg = Message.obtain();
                 Bundle bundle = new Bundle();
-                bundle.putString("ACTION","TEST_MSG");
-                bundle.putString("UPDATE", txt.toString());
+                bundle.putString(RT2Const.commService.ACTION,RT2Const.commService.OUTGOING_TEST_MSG);
+                bundle.putString(RT2Const.commService.REMOTE_APP_NAME, txt.toString());
                 msg.setData(bundle);
 
                 try {

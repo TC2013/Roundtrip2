@@ -15,6 +15,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -56,16 +57,8 @@ public class HistoryPageListActivity extends AppCompatActivity {
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        toolbar.setTitle(getTitle());
+        toolbar.setTitle(R.string.title_pump_history);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
         // Show the Up button in the action bar.
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
@@ -121,28 +114,29 @@ public class HistoryPageListActivity extends AppCompatActivity {
         filter.addAction(RT2Const.local.INTENT_historyPageBundleIncoming);
         LocalBroadcastManager.getInstance(getApplicationContext()).registerReceiver(mBroadcastRecevier,filter);
 
-        // tell them we're ready for data
-        Intent intent = new Intent(RT2Const.local.INTENT_historyPageViewerReady);
-        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_bluetooth_scan, menu);
+        return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        /*
-        if (id == android.R.id.home) {
-            // This ID represents the Home or Up button. In the case of this
-            // activity, the Up button is shown. Use NavUtils to allow users
-            // to navigate up one level in the application structure. For
-            // more details, see the Navigation pattern on Android Design:
-            //
-            // http://developer.android.com/design/patterns/navigation.html#up-vs-back
-            //
-            navigateUpFromSameTask(this);
-            return true;
+        switch (item.getItemId()) {
+            case R.id.miScan:
+                getHistory();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
         }
-        */
-        return super.onOptionsItemSelected(item);
+    }
+
+    public void getHistory(){
+        // tell them we're ready for data
+        Intent intent = new Intent(RT2Const.local.INTENT_historyPageViewerReady);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
     }
 
     private void setupRecyclerView(@NonNull RecyclerView recyclerView) {
